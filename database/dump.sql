@@ -1,0 +1,133 @@
+-- MySQL dump 10.13  Distrib 8.4.0, for Linux (x86_64)
+--
+-- Host: localhost    Database: chat
+-- ------------------------------------------------------
+-- Server version	8.4.0
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `canal`
+--
+
+DROP TABLE IF EXISTS `canal`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `canal` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `dataatualizacao` timestamp NULL DEFAULT NULL,
+  `nome` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `canal`
+--
+
+LOCK TABLES `canal` WRITE;
+/*!40000 ALTER TABLE `canal` DISABLE KEYS */;
+INSERT INTO `canal` VALUES (1,'2024-06-30 14:58:16',NULL,'teste');
+/*!40000 ALTER TABLE `canal` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `canalconexoes`
+--
+
+DROP TABLE IF EXISTS `canalconexoes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `canalconexoes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `idcanal` int NOT NULL,
+  `idconexao` char(36) NOT NULL,
+  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `dataatualizacao` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idcanal` (`idcanal`),
+  KEY `idconexao` (`idconexao`),
+  CONSTRAINT `canalconexoes_ibfk_1` FOREIGN KEY (`idcanal`) REFERENCES `canal` (`id`),
+  CONSTRAINT `canalconexoes_ibfk_2` FOREIGN KEY (`idconexao`) REFERENCES `conexao` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `canalconexoes`
+--
+
+LOCK TABLES `canalconexoes` WRITE;
+/*!40000 ALTER TABLE `canalconexoes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `canalconexoes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `canaliteracao`
+--
+
+DROP TABLE IF EXISTS `canaliteracao`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `canaliteracao` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `mensagem` text,
+  `anexo` varchar(255) DEFAULT NULL,
+  `idcanalconexao` int NOT NULL,
+  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `dataatualizacao` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `canaliteracao`
+--
+
+LOCK TABLES `canaliteracao` WRITE;
+/*!40000 ALTER TABLE `canaliteracao` DISABLE KEYS */;
+/*!40000 ALTER TABLE `canaliteracao` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `conexao`
+--
+
+DROP TABLE IF EXISTS `conexao`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `conexao` (
+  `id` char(36) NOT NULL DEFAULT (uuid()),
+  `nome` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `conexao`
+--
+
+LOCK TABLES `conexao` WRITE;
+/*!40000 ALTER TABLE `conexao` DISABLE KEYS */;
+/*!40000 ALTER TABLE `conexao` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-06-30 15:43:30
