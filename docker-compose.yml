@@ -1,0 +1,37 @@
+version: '3.8'
+services: 
+  chatdb: 
+    env_file: 
+      - ./.env
+    container_name: chatdb 
+    hostname: chatdb 
+    ports: 
+      - ${MYSQL_PORT}:${MYSQL_PORT}
+    build: 
+      context: ./database/
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./source/database/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+    restart: unless-stopped
+    networks: 
+      - chat
+
+  chatapp: 
+    env_file:
+      - .env
+    image: golang:latest 
+    hostname: chatapp 
+    ports: 
+      - ${APP_PORT}:${APP_PORT}
+    container_name: chatapp 
+    working_dir: /app
+    build: .
+    volumes: 
+      - ./:/app
+    networks: 
+      - chat
+    tty: true
+
+networks:
+  chat:
+    driver: bridge
