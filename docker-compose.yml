@@ -11,7 +11,7 @@ services:
       context: ./database/
       dockerfile: ./Dockerfile
     volumes:
-      - ./source/database/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+      - ./database/dump.sql:/docker-entrypoint-initdb.d/dump.sql
     restart: unless-stopped
     networks: 
       - chat
