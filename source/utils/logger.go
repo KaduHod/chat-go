@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	LOGGER_DIR = "/var/log/gym/server"
+	LOGGER_DIR = "/var/log/chat"
 	DDMMYYY_hhmmss = "02/01/2006 15:04:05"
 	TIME_LOCATION = "America/Sao_Paulo"
 	ERROR_LOG_FILE = "/errors.log"
@@ -30,6 +30,7 @@ func Logger(path string, msg string, title string, use_default_date_config bool)
 	file, err := os.OpenFile(file_name, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("Erro ao ABRIR arquivo " + file_name)
+		return
 	}
 	var content []byte
 	if use_default_date_config {
@@ -39,6 +40,7 @@ func Logger(path string, msg string, title string, use_default_date_config bool)
 	}
 	if _, err := file.Write(content); err != nil {
 		fmt.Println("Erro ao ESCREVER em arquivo " + file_name)
+		return
 	}
 	if err := file.Close(); err != nil {
 		fmt.Println("Erro ao FECHAR arquivo " + file_name + " " + err.Error())
