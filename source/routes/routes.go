@@ -2,6 +2,7 @@ package routes
 
 import (
 	"chat/source/utils"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -21,8 +22,14 @@ var (
 	canalPadrao = "canal1"
 )
 type WSCliente struct {
+	username string
 	conn *websocket.Conn
+	idsocket string
 	enviar chan []byte
+}
+type WSMensagem struct {
+	remetente string 
+	conteudo string
 }
 func (cliente *WSCliente) ler(){
 	defer func(){
@@ -31,14 +38,21 @@ func (cliente *WSCliente) ler(){
 		cliente.conn.Close()
 	}()
 	for {
-		_, mensagem, err := cliente.conn.ReadMessage()
+		//var mensagem WSMensagem
+		_, msg, err := cliente.conn.ReadMessage()
+		log.Println(string(msg))
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("Erro inexperado: %v", err)
 			}
+			log.Println(err)
 			break
 		}
-		canais[canalPadrao].transmissao <- mensagem
+		canais[canalPadrao].transmissao <- msg
+		/*utils.JsonParaStruct[WSMensagem](string(msg), &mensagem)
+		if mensagem.remetente != cliente.idsocket {
+			canais[canalPadrao].transmissao <- []byte(mensagem.conteudo)
+		}*/
 	}
 }
 func (cliente *WSCliente) escrever(){
@@ -53,7 +67,19 @@ func (cliente *WSCliente) escrever(){
 				cliente.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			cliente.conn.WriteMessage(websocket.TextMessage, mensagem)
+			if err := cliente.conn.WriteMessage(websocket.TextMessage, mensagem); err != nil {
+				log.Println("Erro ao enviar mensagem", err)
+				continue
+			}
+			/*msg := WSMensagem{
+				remetente: cliente.idsocket,
+				conteudo: string(mensagem),
+			}
+			if err := cliente.conn.WriteMessage(websocket.TextMessage, []byte(utils.StructParaJson[WSMensagem](msg))); err != nil {
+				log.Println("Erro ao escrever json")
+				log.Println(err)
+				continue
+			}*/
 		}
 	}
 }
@@ -65,14 +91,19 @@ type WSCanal struct {
 }
 func websocketHandler(c * gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	idConexaoSocket := c.Request.Header.Get("Sec-WebSocket-Key")
+	fmt.Println(idConexaoSocket)
 	if err != nil {
 		utils.Logger("/debug.log", "Erro ao iniciar websocket", "WS", false)
 		log.Println(err)
 		return
 	}
+	username := c.Param("Username")
 	cliente := &WSCliente{
 		conn: conn,
+		idsocket: idConexaoSocket,
 		enviar: make(chan []byte, 256),
+		username: username,
 	}
 	canalPadrao := "canal1"
 	canais[canalPadrao].entrar <- cliente
@@ -106,6 +137,7 @@ func IniciarHub(canal *WSCanal) {
 		case mensagem := <-canal.transmissao:
 			log.Printf("Transmitindo mensagem: %s", mensagem)
 			for cliente := range canal.clientes {
+				fmt.Println("Mensagem >>", cliente.idsocket)
 				select {
 				case cliente.enviar <- mensagem:
 				default:
@@ -120,9 +152,8 @@ func IniciarHub(canal *WSCanal) {
 func Router (router *gin.Engine) {
 	iniciarCanalPadrao()
 	router.GET("/", func (c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H {
-			"message": "success",
-		})
+		c.Header("Content-type", "text/html")
+		c.HTML(http.StatusOK, "index.html", gin.H{})
 	})
 	router.GET("/ws", websocketHandler)
 	router.GET("/home", func (c *gin.Context) {

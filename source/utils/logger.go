@@ -47,3 +47,7 @@ func Logger(path string, msg string, title string, use_default_date_config bool)
 		log.Fatal(err)
 	}
 }
+func Loga(msg string) {
+	log.Println(msg)
+	Logger("debug.log", msg, "Log rapido", true)
+}

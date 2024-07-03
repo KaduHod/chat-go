@@ -41,6 +41,8 @@ func Logger() gin.HandlerFunc {
 func main() {
 	app := gin.Default()
 	app.Use(Logger())
+	app.Static("/public", "./public")
+	app.LoadHTMLFiles("public/index.html")
 	app.Use(gin.Recovery())
 	routes.Router(app)
 	app.Run(":3000")
