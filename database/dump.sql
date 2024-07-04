@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.4.0, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 9.0.0, for Linux (x86_64)
 --
 -- Host: localhost    Database: chat
 -- ------------------------------------------------------
--- Server version	8.4.0
+-- Server version	9.0.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -25,7 +25,7 @@ DROP TABLE IF EXISTS `canal`;
 CREATE TABLE `canal` (
   `id` int NOT NULL AUTO_INCREMENT,
   `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `dataatualizacao` timestamp NULL DEFAULT NULL,
+  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `nome` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -53,7 +53,7 @@ CREATE TABLE `canalconexoes` (
   `idcanal` int NOT NULL,
   `idconexao` char(36) NOT NULL,
   `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `dataatualizacao` timestamp NULL DEFAULT NULL,
+  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idcanal` (`idcanal`),
   KEY `idconexao` (`idconexao`),
@@ -84,7 +84,7 @@ CREATE TABLE `canaliteracao` (
   `anexo` varchar(255) DEFAULT NULL,
   `idcanalconexao` int NOT NULL,
   `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `dataatualizacao` timestamp NULL DEFAULT NULL,
+  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -121,6 +121,93 @@ LOCK TABLES `conexao` WRITE;
 /*!40000 ALTER TABLE `conexao` DISABLE KEYS */;
 /*!40000 ALTER TABLE `conexao` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `usuario`
+--
+
+DROP TABLE IF EXISTS `usuario`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `usuario` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) DEFAULT NULL,
+  `apelido` varchar(8) DEFAULT NULL,
+  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `apelido` (`apelido`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `usuario`
+--
+
+LOCK TABLES `usuario` WRITE;
+/*!40000 ALTER TABLE `usuario` DISABLE KEYS */;
+/*!40000 ALTER TABLE `usuario` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `usuariocanal`
+--
+
+DROP TABLE IF EXISTS `usuariocanal`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `usuariocanal` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `idusuario` int NOT NULL,
+  `idcanal` int NOT NULL,
+  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idcanal` (`idcanal`),
+  KEY `idusuario` (`idusuario`),
+  CONSTRAINT `usuariocanal_ibfk_1` FOREIGN KEY (`idcanal`) REFERENCES `canal` (`id`),
+  CONSTRAINT `usuariocanal_ibfk_2` FOREIGN KEY (`idusuario`) REFERENCES `usuario` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `usuariocanal`
+--
+
+LOCK TABLES `usuariocanal` WRITE;
+/*!40000 ALTER TABLE `usuariocanal` DISABLE KEYS */;
+/*!40000 ALTER TABLE `usuariocanal` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `usuarioconexao`
+--
+
+DROP TABLE IF EXISTS `usuarioconexao`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `usuarioconexao` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `idusuario` int NOT NULL,
+  `idconexao` char(36) NOT NULL,
+  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idusuario` (`idusuario`),
+  KEY `idconexao` (`idconexao`),
+  CONSTRAINT `usuarioconexao_ibfk_1` FOREIGN KEY (`idusuario`) REFERENCES `usuario` (`id`),
+  CONSTRAINT `usuarioconexao_ibfk_2` FOREIGN KEY (`idconexao`) REFERENCES `conexao` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `usuarioconexao`
+--
+
+LOCK TABLES `usuarioconexao` WRITE;
+/*!40000 ALTER TABLE `usuarioconexao` DISABLE KEYS */;
+/*!40000 ALTER TABLE `usuarioconexao` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -131,4 +218,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-06-30 22:25:43
+-- Dump completed on 2024-07-04  0:08:34
