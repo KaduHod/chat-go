@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"chat/source/database"
 	"chat/source/utils"
 	"fmt"
 	"log"
@@ -148,12 +149,43 @@ func IniciarHub(canal *WSCanal) {
 		}
 	}
 }
-
+type Usuario struct {
+	Id int `json:"id"`
+	Nome string `json:"nome"`
+	Apelido string `json:"apelido"`
+}
 func Router (router *gin.Engine) {
 	iniciarCanalPadrao()
 	router.GET("/", func (c *gin.Context) {
 		c.Header("Content-type", "text/html")
 		c.HTML(http.StatusOK, "index.html", gin.H{})
+	})
+	router.POST("/cadastrar", func(c *gin.Context) {
+		var usr Usuario
+		if !utils.RequestBody[Usuario](&usr, c) {
+			return
+		} 
+		sql := fmt.Sprintf("INSERT INTO usuario (nome, apelido) VALUES ('%s','%s')", usr.Nome, usr.Apelido)
+		db := database.ConnectionConstructor()
+		db.ExecAndLog(sql)
+		sql = fmt.Sprintf("SELECT id, nome, apelido FROM usuario WHERE apelido = '%s' LIMIT 1", usr.Apelido)
+		row := db.QueryRowAndLog(sql)
+		if row.Err() != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			defer db.Conn.Close()
+			return
+		}
+		if err := row.Scan(&usr.Id, &usr.Nome, &usr.Apelido); err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			defer db.Conn.Close()
+			return
+		}
+		defer db.Conn.Close()
+		c.JSON(http.StatusOK, gin.H{
+			"mensagem": "ok",
+			"usuario": usr,
+		})
+		return 
 	})
 	router.GET("/ws", websocketHandler)
 	router.GET("/home", func (c *gin.Context) {
