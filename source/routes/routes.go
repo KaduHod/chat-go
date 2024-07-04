@@ -160,7 +160,7 @@ func Router (router *gin.Engine) {
 		c.Header("Content-type", "text/html")
 		c.HTML(http.StatusOK, "index.html", gin.H{})
 	})
-	router.POST("/cadastrar", func(c *gin.Context) {
+	router.POST("/logar", func(c *gin.Context) {
 		var usr Usuario
 		if !utils.RequestBody[Usuario](&usr, c) {
 			return
@@ -184,13 +184,9 @@ func Router (router *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{
 			"mensagem": "ok",
 			"usuario": usr,
+			"chave_secreta": utils.HashSha512(fmt.Sprintf("%d", usr.Id)),
 		})
 		return 
 	})
 	router.GET("/ws", websocketHandler)
-	router.GET("/home", func (c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H {
-			"message": "success",
-		})		
-	})
 }
