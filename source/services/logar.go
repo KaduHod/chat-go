@@ -22,7 +22,7 @@ func LogarUsuario(c *gin.Context) {
 		return
 	}
 	db := database.ConnectionConstructor()
-	if ok := usr.BuscarUsuarioBanco(); !ok {
+	if !usr.BuscarUsuarioBanco() {
 		sql := fmt.Sprintf("INSERT INTO usuario (nome, apelido) VALUES ('%s','%s')", usr.Nome, usr.Apelido)
 		db.ExecAndLog(sql)
 		if !usr.BuscarUsuarioBanco(){

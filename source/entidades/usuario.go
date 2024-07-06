@@ -29,15 +29,13 @@ func (u *Usuario) ValidarAtributos() ([]string, bool) {
 func (u *Usuario) BuscarUsuarioBanco() bool {
 	db := database.ConnectionConstructor()
 	row := db.QueryRowAndLog(fmt.Sprintf("SELECT id, nome, apelido FROM usuario WHERE apelido = '%s'", u.Apelido));
+	defer db.Conn.Close()
 	if row.Err() != nil {
 		utils.Logger("/debug.log", "Erro ao buscar usuario", "BUSCAR USUARIO", true)
-		defer db.Conn.Close()
 		return false
 	}
-	defer db.Conn.Close()
 	if err := row.Scan(&u.Id, &u.Nome, &u.Apelido); err != nil {
 		utils.Logger("/debug.log", "Erro ao escanear resultado de banco para struct", "BUSCAR USUARIO", true)
-		defer db.Conn.Close()
 		return false
 
 	}
