@@ -14,20 +14,23 @@ func LogarUsuario(c *gin.Context) {
 	if !utils.RequestBody[entidades.Usuario](&usr, c) {
 		return
 	} 
-	sql := fmt.Sprintf("INSERT INTO usuario (nome, apelido) VALUES ('%s','%s')", usr.Nome, usr.Apelido)
-	db := database.ConnectionConstructor()
-	db.ExecAndLog(sql)
-	sql = fmt.Sprintf("SELECT id, nome, apelido FROM usuario WHERE apelido = '%s' LIMIT 1", usr.Apelido)
-	row := db.QueryRowAndLog(sql)
-	if row.Err() != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		defer db.Conn.Close()
+	if erros, ok := usr.ValidarAtributos(); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"mensagem": "erro",
+			"erros": erros,
+		})
 		return
 	}
-	if err := row.Scan(&usr.Id, &usr.Nome, &usr.Apelido); err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		defer db.Conn.Close()
-		return
+	db := database.ConnectionConstructor()
+	if ok := usr.BuscarUsuarioBanco(); !ok {
+		sql := fmt.Sprintf("INSERT INTO usuario (nome, apelido) VALUES ('%s','%s')", usr.Nome, usr.Apelido)
+		db.ExecAndLog(sql)
+		if !usr.BuscarUsuarioBanco(){
+			defer db.Conn.Close()
+			utils.Logger("/debug.log", "Erro ao inserir usuario ao banco", "LOGAR USUARIO", true)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 	}
 	defer db.Conn.Close()
 	c.JSON(http.StatusOK, gin.H{
