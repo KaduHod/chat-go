@@ -18,9 +18,8 @@ botaoconectar.onclick = () => {
 
 botaocadastrar.onclick = async (evt) => {
 	const avisaErro = (id = 1) => alert(`[${id}] Nome e apelido devem ter no minimo 8 caracteres`)
-	let nome = inputnome.value.trim()
 	const apelido = inputapelido.value.trim();
-	nome = apelido + " user name"
+	let nome = apelido + " user name"
 	if(nome == "" || apelido == ""){
 		return avisaErro()
 	}
