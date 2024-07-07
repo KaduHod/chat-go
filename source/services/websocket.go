@@ -69,13 +69,6 @@ func (cliente *WSCliente) escrever(){
 				cliente.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			log.Println("Enviando mensagem SERVER 1 >>" + string(mensagem))
-			byte, err := json.Marshal(mensagem)
-			log.Println("Enviando mensagem SERVER >>" + string(byte))
-			if  err != nil {
-				log.Println("Erro ao converter mensagem para json", err)
-				continue
-			}
 			if err := cliente.conn.WriteMessage(websocket.TextMessage, mensagem); err != nil {
 				log.Println("Erro ao enviar mensagem", err)
 				continue
