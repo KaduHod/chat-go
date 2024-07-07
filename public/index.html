@@ -4,27 +4,28 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title></title>
-		<style>
-		.escondido {
-			display: none;
-		}
-		</style>
+		<link rel="stylesheet" type="text/css" href="/public/styles/index.css">
 	</head>
 	<body>
 		<h1>Chat do Kadu e da Nathy</h1>
-		<div id="cadastro">
-				<input id="apelido" type="text" name="nome" value="">
-				<input id="nome" type="text" name="apelido" value="">
-				<button id="botaocadastrar" type="button">cadastrar</button>
+		<div id="cadastro" class="flex-col">
+				<input id="apelido" type="text" name="nome" value="" placeholder="Apelido">
+				<button id="botaocadastrar" type="button">login</button>
 		</div>
-		<div id="chatcontainer">
+		<div class="escondido" id="chatcontainer">
 			<div id="chat">
 			</div>
-			<div>
-				<input id="input" type="text" name="texto" value=""> <button id="botao" type="button">Enviar</button> <button type="button" onclick="document.getElementById('chat').innerHTML = ''">Limpar</button>
+
+			<div id="chatbotoes" class="flex-col">
+				<input id="input" type="text" name="texto" value=""> 
+				<div>
+					<button id="botao" type="button">Enviar</button> <button type="button" onclick="document.getElementById('chat').innerHTML = ''">Limpar</button> 
+					<button id="conectar" type="" name="" value="conectar">Conectar</button>
+
+				</div>
 			</div>
 
 		</div>
-		<script src="/public/index.js"></script>
+		<script src="/public/scripts/index.js"></script>
 	</body>
 </html>
