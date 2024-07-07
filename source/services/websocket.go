@@ -99,7 +99,7 @@ func WebsocketHandler(c * gin.Context) {
 		return
 	}
 	username := c.Param("Username")
-	secretKey := c.Param("tk")
+	//secretKey := c.Param("tk")
 	cliente := &WSCliente{
 		conn: conn,
 		idsocket: idConexaoSocket,
