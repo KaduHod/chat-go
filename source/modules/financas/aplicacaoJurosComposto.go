@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 )
 const (
 	Mensal = iota
@@ -38,8 +39,8 @@ type AplicacaoFinanceira struct {
 	QuantidadeDeMeses int `json:"quantidadedeemmeses"`
 	Aporte AporteAplicacaoFinanceira `json:"aporte"`
 	Taxa float64 `json:"taxa"`
-	Resultado float64 `json:"resultado"`
-	ResultadoSemTaxa float64 `json:"resultadosemtaxa"`
+	ResultadoComValorizacao float64 `json:"resultadocomvalorizacao"`
+	ResultadoSemValorizacao float64 `json:"resultadosemvalorizacao"`
 	MontanteResultadaDeValorizacao float64 `json:"montanteresultadadevalorizacao"`
 	ResultadoDePeriodos []ResultadoAplicacaoPeriodo `json:"resultadodeperiodos"`
 }
@@ -49,38 +50,50 @@ type ResultadoAplicacaoPeriodo struct {
 	MontanteComValorizacao string `json:"valorcomvalorizacao"`
 	MontanteSemValorizacao string `json:"valorsemvalorizacao"`
 }
+type Dummy struct {
+	Montante float64 `json:"montante"`
+	MontanteComValorizacao float64 `json:"montante-com-valorizacao"`
+	Valorizacao float64 `json:"valorizacao"`
+	MontanteComAporteEValorizacao float64 `json:"montante-com-v-e-aporte"`
+	MontanteSemValorizacao float64 `json:"montante-sem-valorizacao"`
+	MontanteSemValorizacaoEComAporte float64 `json:"montante-sem-v-e-com-aporte"`
+}
 func (a *AplicacaoFinanceira) CalcularRendimento() {
 	contador := 1
 	montante := a.ValorInicial
+	montanteSemValorizacao := a.ValorInicial
+	dataInicial := time.Now()
 	a.MontanteResultadaDeValorizacao = 0.0
 	for contador <= a.QuantidadeDeMeses {
-		fmt.Println(contador)
 		switch a.Aporte.FrequenciaAporte {
 		case Mensal:
-			var resultadoPeriodo ResultadoAplicacaoPeriodo
 			valorizacaoDoPeriodo := a.calculaValorizacaoPeriodo(montante)
-			valorSemValorizacao := montante + a.Aporte.ValorAporte
-			valorComValorizacao := valorSemValorizacao + valorizacaoDoPeriodo
-			a.MontanteResultadaDeValorizacao += valorComValorizacao
+			montante = montante + valorizacaoDoPeriodo
+			montante = montante + a.Aporte.ValorAporte
+			montanteSemValorizacao = montanteSemValorizacao + a.Aporte.ValorAporte
+			a.MontanteResultadaDeValorizacao = montante
+			a.ResultadoSemValorizacao = montanteSemValorizacao
+			var resultadoPeriodo ResultadoAplicacaoPeriodo
+			resultadoPeriodo.Data = dataInicial.Format("2006-01-02")
+			resultadoPeriodo.MontanteSemValorizacao = resultadoPeriodo.paraValorMonetario(montanteSemValorizacao)
+			resultadoPeriodo.MontanteComValorizacao = resultadoPeriodo.paraValorMonetario(montante)
 			resultadoPeriodo.ValorizacaoPeriodo = resultadoPeriodo.paraValorMonetario(valorizacaoDoPeriodo)
-			resultadoPeriodo.MontanteComValorizacao = resultadoPeriodo.paraValorMonetario(a.MontanteResultadaDeValorizacao)
-			resultadoPeriodo.MontanteSemValorizacao = resultadoPeriodo.paraValorMonetario(valorSemValorizacao)
 			a.ResultadoDePeriodos = append(a.ResultadoDePeriodos, resultadoPeriodo)
-			fmt.Println("Valorizacao: ",resultadoPeriodo.ValorizacaoPeriodo)
-			contador++
+			dataInicial = dataInicial.AddDate(0,1,0)
 		case Trimestral:
 		case Semestral:
 		case Anual:
 		}
 		contador++
 	}
+	a.ResultadoComValorizacao = montante
+	
 }
 func (a *AplicacaoFinanceira) PrintarJsonComResultado() string {
 	jsonbytes, err := json.Marshal(a)
 	if err != nil {
 		log.Println("Erro ao converter resultado para json")
 	}
-	log.Println(string(jsonbytes))
 	return string(jsonbytes)
 }
 func (a *AplicacaoFinanceira) calculaValorizacaoPeriodo(valorIncrementado float64) float64 {

@@ -1,26 +1,27 @@
 package financas_test
 
 import (
+	"bytes"
 	"chat/source/modules/financas"
+	"encoding/json"
+	"fmt"
 	"testing"
 )
 
 func TestPrincipal(t *testing.T) {
 	var aplicacao financas.AplicacaoFinanceira
 	var aporte financas.AporteAplicacaoFinanceira
-	t.Log(aporte, aplicacao)
-	aplicacao.QuantidadeDeMeses = 12
-	aporte.ValorAporte = 300.00
+	aplicacao.QuantidadeDeMeses = 12*4
+	aporte.ValorAporte = 500.00
 	aporte.ValorAumentoAporte = 100.00
 	aporte.FrequenciaAporte = financas.Mensal
 	aporte.FrequenciaAumentoAporte = financas.Anual
 	aplicacao.Aporte = aporte
-	aplicacao.ValorInicial = 0.0
+	aplicacao.ValorInicial = 2940.0
 	aplicacao.Taxa = 0.0097
 	aplicacao.CalcularRendimento()
-	t.Log(aporte.FrequenciaAporte)
-	t.Fail();	
-/*
-	t.Log("Aquiii 3")
-	t.Log(aplicacao.PrintarJsonComResultado())*/
+	var json_preety bytes.Buffer
+	_ = json.Indent(&json_preety, []byte(aplicacao.PrintarJsonComResultado()), "", "\t")
+	fmt.Println(string(json_preety.Bytes()))
+	t.Fail()
 }
