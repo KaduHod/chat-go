@@ -43,6 +43,7 @@ func main() {
 	app.Use(Logger())
 	app.Static("/public", "./public")
 	app.LoadHTMLFiles("public/index.html")
+	app.LoadHTMLFiles("public/financas/grafico.html")
 	app.Use(gin.Recovery())
 	routes.Router(app)
 	app.Run(":3000")

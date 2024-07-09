@@ -1,10 +1,9 @@
 package financas
 
 import (
+	"chat/source/utils"
 	"encoding/json"
-	"fmt"
 	"log"
-	"strings"
 	"time"
 )
 const (
@@ -12,6 +11,7 @@ const (
 	Trimestral
 	Semestral
 	Anual
+	Nulo
 )
 func pegaTipoFrequencia(opcao int) string {
 	var resultado string
@@ -24,71 +24,140 @@ func pegaTipoFrequencia(opcao int) string {
 			resultado = "semestral"
 		case Trimestral:
 			resultado = "trimestral"
+		case Nulo:
+			resultado = "nulo"
 	}
 	return resultado
 } 
-type AporteAplicacaoFinanceira struct {
-	ValorAporte float64 `json:"valoraporte"`
-	ValorAumentoAporte float64 `json:"valoraumentoaporte"`
-	FrequenciaAumentoAporteDesc string `json:"frequenciaaporte"`
-	FrequenciaAumentoAporte int
-	FrequenciaAporte int 
+
+func PegaTipoFrequencia(opcao string) int {
+	switch opcao {
+	case "mensal":
+		return Mensal
+	case "anual":
+		return Anual
+	case "semestral":
+		return Semestral
+	case "trimestral":
+		return Trimestral
+	}	
+	return Mensal
 }
+
+type AporteAplicacaoFinanceira struct {
+	ValorAporte float64 `json:"valorAporte"`
+	ValorAumentoAporte float64 `json:"valorAumentoAporte"`
+	FrequenciaAumentoAporteDesc string `json:"frequenciaAumentoAporteDesc"`
+	FrequenciaAumentoAporte int `json:"frequenciaAumentoAporte"`
+	FrequenciaAporte int `json:"frequenciaAporte"`
+}
+
 type AplicacaoFinanceira struct {
-	ValorInicial float64 `json:"valorinicial"`
-	QuantidadeDeMeses int `json:"quantidadedeemmeses"`
+	ValorInicial float64 `json:"valorInicial"`
+	QuantidadeDeMeses int `json:"quantidadeDeMeses"`
 	Aporte AporteAplicacaoFinanceira `json:"aporte"`
 	Taxa float64 `json:"taxa"`
-	ResultadoComValorizacao float64 `json:"resultadocomvalorizacao"`
-	ResultadoSemValorizacao float64 `json:"resultadosemvalorizacao"`
-	MontanteResultadaDeValorizacao float64 `json:"montanteresultadadevalorizacao"`
-	ResultadoDePeriodos []ResultadoAplicacaoPeriodo `json:"resultadodeperiodos"`
+	ResultadoComJurosComposto float64 `json:"resultadoComJurosComposto"`
+	ResultadoSemJurosComposto float64 `json:"resultadoSemJurosComposto"`
+	ResultadoDePeriodos []ResultadoAplicacaoPeriodo `json:"resultadoDePeriodos"`
 }
+
 type ResultadoAplicacaoPeriodo struct {
+	Identificador int `json:"identificador"`
 	Data string `json:"data"`
-	ValorizacaoPeriodo string `json:"valorizacaoperiodo"`
-	MontanteComValorizacao string `json:"valorcomvalorizacao"`
-	MontanteSemValorizacao string `json:"valorsemvalorizacao"`
+	ValorComAporteMaisJurosCompostoFormatado string `json:"valorComJurosCompostoFormatado"`
+	ValorComAporteSemJurosCompostoFormatado  string `json:"valorSemJurosCompostoFormatado"`
+	ValorizacaoPeriodoFormatado string `json:"valorizacaoPeriodoFormatado"`
+	ValorAportadoFormatado string `json:"valorAportadoFormatado"`
+	ValorizacaoPeriodo float64 `json:"valorizacaoPeriodo"`
+	ValorComAporteMaisJurosComposto float64 `json:"valorComAporteMaisJurosComposto"`
+	ValorComAporteSemJurosComposto float64 `json:"valorComAporteSemJurosComposto"`
+	ValorAportado float64 `json:"valorAportado"`
 }
-type Dummy struct {
-	Montante float64 `json:"montante"`
-	MontanteComValorizacao float64 `json:"montante-com-valorizacao"`
-	Valorizacao float64 `json:"valorizacao"`
-	MontanteComAporteEValorizacao float64 `json:"montante-com-v-e-aporte"`
-	MontanteSemValorizacao float64 `json:"montante-sem-valorizacao"`
-	MontanteSemValorizacaoEComAporte float64 `json:"montante-sem-v-e-com-aporte"`
+
+func (r *ResultadoAplicacaoPeriodo) formataValores() {
+	r.ValorComAporteSemJurosCompostoFormatado  = utils.FloatParaValorMonetario(r.ValorComAporteSemJurosComposto)
+	r.ValorComAporteMaisJurosCompostoFormatado = utils.FloatParaValorMonetario(r.ValorComAporteMaisJurosComposto)
+	r.ValorizacaoPeriodoFormatado = utils.FloatParaValorMonetario(r.ValorizacaoPeriodo)
+	r.ValorAportadoFormatado = utils.FloatParaValorMonetario(r.ValorAportado)
 }
-func (a *AplicacaoFinanceira) CalcularRendimento() {
+
+func (a *AplicacaoFinanceira) CalcularRendimento(valor *float64, valorSemJurosComposto *float64, data time.Time) ResultadoAplicacaoPeriodo {
+	var resultadoPeriodo ResultadoAplicacaoPeriodo
+	resultadoPeriodo.ValorizacaoPeriodo = a.calculaValorizacaoPeriodo(*valor)
+	*valor = *valor + resultadoPeriodo.ValorizacaoPeriodo + a.Aporte.ValorAporte
+	*valorSemJurosComposto = *valorSemJurosComposto + a.Aporte.ValorAporte
+	resultadoPeriodo.Data = data.Format("2006-01-02")
+	resultadoPeriodo.ValorAportado = a.Aporte.ValorAporte
+	resultadoPeriodo.ValorComAporteSemJurosComposto = *valorSemJurosComposto
+	resultadoPeriodo.ValorComAporteMaisJurosComposto = *valor
+	resultadoPeriodo.formataValores()
+	return resultadoPeriodo
+}
+
+func (a *AplicacaoFinanceira) IniciarSimulacao() {
 	contador := 1
-	montante := a.ValorInicial
-	montanteSemValorizacao := a.ValorInicial
+	valor := a.ValorInicial
+	valorSemJurosComposto := a.ValorInicial
 	dataInicial := time.Now()
-	a.MontanteResultadaDeValorizacao = 0.0
+	dataAcumuladora := dataInicial
 	for contador <= a.QuantidadeDeMeses {
 		switch a.Aporte.FrequenciaAporte {
 		case Mensal:
-			valorizacaoDoPeriodo := a.calculaValorizacaoPeriodo(montante)
-			montante = montante + valorizacaoDoPeriodo
-			montante = montante + a.Aporte.ValorAporte
-			montanteSemValorizacao = montanteSemValorizacao + a.Aporte.ValorAporte
-			a.MontanteResultadaDeValorizacao = montante
-			a.ResultadoSemValorizacao = montanteSemValorizacao
-			var resultadoPeriodo ResultadoAplicacaoPeriodo
-			resultadoPeriodo.Data = dataInicial.Format("2006-01-02")
-			resultadoPeriodo.MontanteSemValorizacao = resultadoPeriodo.paraValorMonetario(montanteSemValorizacao)
-			resultadoPeriodo.MontanteComValorizacao = resultadoPeriodo.paraValorMonetario(montante)
-			resultadoPeriodo.ValorizacaoPeriodo = resultadoPeriodo.paraValorMonetario(valorizacaoDoPeriodo)
+			resultadoPeriodo := a.CalcularRendimento(&valor, &valorSemJurosComposto, dataAcumuladora)
+			dataAcumuladora = dataAcumuladora.AddDate(0,1,0)
+			resultadoPeriodo.Identificador = contador
 			a.ResultadoDePeriodos = append(a.ResultadoDePeriodos, resultadoPeriodo)
-			dataInicial = dataInicial.AddDate(0,1,0)
 		case Trimestral:
+			if contador != 1 || contador % 3 != 0 {
+				continue
+			} 
+			resultadoPeriodo := a.CalcularRendimento(&valor, &valorSemJurosComposto, dataAcumuladora)
+			dataAcumuladora = dataAcumuladora.AddDate(0,3,0)
+			resultadoPeriodo.Identificador = contador		
+			a.ResultadoDePeriodos = append(a.ResultadoDePeriodos, resultadoPeriodo)
 		case Semestral:
+			if contador != 1 || contador % 6 != 0 {
+				continue
+			}
+			resultadoPeriodo := a.CalcularRendimento(&valor, &valorSemJurosComposto, dataAcumuladora)
+			dataAcumuladora = dataAcumuladora.AddDate(0,6,0) 
+			resultadoPeriodo.Identificador = contador
+			a.ResultadoDePeriodos = append(a.ResultadoDePeriodos, resultadoPeriodo)
 		case Anual:
+			if contador != 1 || contador % 12 != 0 {
+				continue
+			}
+			resultadoPeriodo := a.CalcularRendimento(&valor, &valorSemJurosComposto, dataAcumuladora)
+			dataAcumuladora = dataAcumuladora.AddDate(1,0,0) 
+			resultadoPeriodo.Identificador = contador
+			a.ResultadoDePeriodos = append(a.ResultadoDePeriodos, resultadoPeriodo)
 		}
 		contador++
+		switch a.Aporte.FrequenciaAumentoAporte {
+		case Mensal:
+			a.Aporte.ValorAporte += a.Aporte.ValorAumentoAporte
+		case Trimestral:
+			if contador == 1 || contador % 3 != 0 {
+				continue
+			}
+			a.Aporte.ValorAporte += a.Aporte.ValorAumentoAporte
+		case Semestral:
+			if contador == 1 || contador % 6 != 0 {
+				continue
+			}
+			a.Aporte.ValorAporte += a.Aporte.ValorAumentoAporte
+		case Anual:
+			if contador == 1 || contador % 12 != 0 {
+				continue
+			}
+			a.Aporte.ValorAporte += a.Aporte.ValorAumentoAporte
+		}
 	}
-	a.ResultadoComValorizacao = montante
-	
+	a.ResultadoComJurosComposto = valor
+	a.ResultadoSemJurosComposto = valorSemJurosComposto
 }
+
 func (a *AplicacaoFinanceira) PrintarJsonComResultado() string {
 	jsonbytes, err := json.Marshal(a)
 	if err != nil {
@@ -96,16 +165,7 @@ func (a *AplicacaoFinanceira) PrintarJsonComResultado() string {
 	}
 	return string(jsonbytes)
 }
+
 func (a *AplicacaoFinanceira) calculaValorizacaoPeriodo(valorIncrementado float64) float64 {
 	return valorIncrementado * a.Taxa
-}
-func (a *AplicacaoFinanceira) CalcularRendimentoMensal() {}
-func (a *AplicacaoFinanceira) CalcularRendimentoAnual() {}
-func (a *AplicacaoFinanceira) CalcularRendimentoSemestral() {}
-func (a *AplicacaoFinanceira) CalcularRendimentoTrimestral() {}
-func (r *ResultadoAplicacaoPeriodo) paraValorMonetario(valor float64) string {
-	valueStr := fmt.Sprintf("%.2f", valor)
-	valueStr = strings.Replace(valueStr, ".", ",", 1)
-	valueStr = "R$ " + valueStr
-	return valueStr
 }

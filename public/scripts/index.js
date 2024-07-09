@@ -1,5 +1,5 @@
 const AMBIENTE = "PROD"//"PROD"
-const BASEURLSERVER = AMBIENTE == "DEV" ? "localhost:3000" : "75f3-186-206-40-55.ngrok-free.app";
+const BASEURLSERVER = AMBIENTE == "DEV" ? "localhost:3000" : "132f-2804-14c-87c4-82fb-83a5-9e0c-560d-fee5.ngrok-free.app";
 const WEBSOCKETURL = AMBIENTE == "DEV" ? "ws://" + BASEURLSERVER + "/ws" : "wss://" + BASEURLSERVER + "/ws"
 const nomeusertitulo = document.getElementById('nomeuser')
 const div_resultado = document.getElementById("chat")
