@@ -6,9 +6,79 @@
 		<title></title>
 		<link href="css/style.css" rel="stylesheet">
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<style>
+.debug{
+	border: 1px solid red;
+}
+.flex{
+	margin:10px;
+	display: flex;
+}
+.fcolumn {
+	flex-direction: column;
+}
+		</style>
 	</head>
 	<body>
-	<canvas id="meu-grafico" width="400" height="200"></canvas>
+		<div class="flex fcolumn">
+			<div class="">
+				<h1>Formulário de Aplicação Financeira</h1>	
+			</div>
+			<div class=" flex">
+				<div class="">
+					<form id="financeForm">
+						<div class="form-group">
+							<label for="quantidadeAnos">Quantidade de anos</label>
+							<input type="number" id="quantidadeAnos" name="quantidadeAnos" value="10" required>
+						</div>
+						<div class="form-group">
+							<label for="valorInicial">Valor Inicial</label>
+							<input type="number" step="0.01" id="valorInicial" name="valorInicial" value="0.0" required>
+						</div>
+						<div class="form-group">
+							<label for="taxa">Taxa de Juros ao mês (CDI = 0.0097)</label>
+							<input type="number" step="0.0001" id="taxa" name="taxa" value="0.0097" required>
+						</div>
+						<div class="form-group">
+							<label for="frequenciaAporte">Frequência de Aporte</label>
+							<select id="frequenciaAporte" name="frequencia">
+								<option value="mensal">Mensal</option>
+								<option value="anual">Anual</option>
+								<option value="semestral">Semestral</option>
+								<option value="trimestral">Trimestral</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="frequenciaAumentoAporte">Frequência de Aumento de Aporte</label>
+							<select id="frequenciaAumentoAporte" name="frequencia">
+								<option value="mensal">Mensal</option>
+								<option value="anual">Anual</option>
+								<option value="semestral">Semestral</option>
+								<option value="trimestral">Trimestral</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="valorAporte">Valor do Aporte</label>
+							<input type="number" step="0.01" id="valorAporte" name="valorAporte" value="100.00" required>
+						</div>
+						<div class="form-group">
+							<label for="valorAumentoAporte">Valor do Aumento de Aporte</label>
+							<input type="number" step="0.01" id="valorAumentoAporte" name="valorAumentoAporte" value="0.0" required>
+						</div>
+						<button id="financaBotao" type="button">Simular</button>
+					</form>
+				</div>
+				<div class="" style="padding-left:20px;display:flex;align-items:center;flex-direction:column;justify-content:center;">
+					<h2>Resultado com juros: <span id="resultado_com_juros"></span></h2>
+					<h2>Resultado sem juros: <span id="resultado_sem_juros"></span></h2>
+					<h2>Diferença: <span id="diferenca_juros"></span></h2>
+					<h2>Maior valorização: <span id="maior_valorizacao"></span></h2>
+				</div>
+			</div>
+			<div class="">
+				<canvas id="meu-grafico" width="400" height="200"></canvas>
+			</div>
+		</div>
 	<script src="/public/scripts/grafico.js"></script>
 	</body>
 </html>

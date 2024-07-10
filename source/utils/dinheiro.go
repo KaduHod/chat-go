@@ -14,5 +14,8 @@ func FloatParaValorMonetario(quantia float64) string {
 	} else if len(valueStr) > posPonto + 3 {
 		valueStr = valueStr[:posPonto+3]	
 	}
-	return valueStr
+	swapped := strings.ReplaceAll(valueStr, ",", "X")
+	swapped = strings.ReplaceAll(swapped, ".", ",")
+	swapped = strings.ReplaceAll(swapped, "X", ".")
+	return swapped
 }
