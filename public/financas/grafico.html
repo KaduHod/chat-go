@@ -7,6 +7,10 @@
 		<link href="css/style.css" rel="stylesheet">
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 		<style>
+body{
+	background-color:black;
+	color: white;
+}
 .debug{
 	border: 1px solid red;
 }
@@ -16,6 +20,10 @@
 }
 .fcolumn {
 	flex-direction: column;
+	border-radius:10;
+}
+canvas{
+	background-color:#c9c9c9;
 }
 		</style>
 	</head>
@@ -73,6 +81,8 @@
 					<h2>Resultado sem juros: <span id="resultado_sem_juros"></span></h2>
 					<h2>Diferença: <span id="diferenca_juros"></span></h2>
 					<h2>Maior valorização: <span id="maior_valorizacao"></span></h2>
+					<h2>Maior valor aportado: <span id="maior_valor_aportado"></span></h2>
+					<h2>Preço Eth: <span id="precoeth"></span></h2>
 				</div>
 			</div>
 			<div class="">
