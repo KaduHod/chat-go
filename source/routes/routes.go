@@ -19,7 +19,8 @@ func Router (router *gin.Engine) {
 	})
 	router.POST("/logar", services.LogarUsuario)
     router.GET("/chat/canais", services.ListarCanaisHandler)
-    router.GET("chat/criar", services.CriarCanalHandler)
+    router.GET("/chat/criar", services.CriarCanalHandler)
+    router.GET("/chat/canal/:id/iniciar", services.IniciarCanalHandler)
 	router.GET("/ws", services.WebsocketHandler)
 	router.GET("/financas/juroscomposto/simular",func(c *gin.Context) {
 		var aplicacao financas.AplicacaoFinanceira

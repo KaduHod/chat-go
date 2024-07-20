@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -86,8 +87,13 @@ type WSCanal struct {
     nome string
     id int64
 }
-func (c *WSCanal) fechar() {
+func (c *WSCanal) fechar(db *database.Db) error {
     fmt.Println(fmt.Sprintf("Fechando canal %s", c.nome))
+    sql := fmt.Sprintf("UPDATE canal SET online = false WHERE id = %d", c.id)
+    _, err := db.ExecAndLog(sql)
+    if err != nil {
+        return err
+    }
     for cliente := range c.clientes {
         delete(c.clientes, cliente)
         fmt.Println(fmt.Sprintf("Usuario %s retirado do canal", cliente.username))
@@ -95,6 +101,46 @@ func (c *WSCanal) fechar() {
     close(c.transmissao)
     close(c.entrar)
     close(c.sair)
+    return nil
+}
+func (c *WSCanal) registrarCanalBanco(db *database.Db) error {
+    query := fmt.Sprintf("INSERT INTO canal (nome) VALUES ('%s')", c.nome)
+    resultadoInsercao, err := db.ExecAndLog(query)
+    if err != nil {
+        return err
+    }
+    id, err := resultadoInsercao.LastInsertId()
+    if err != nil {
+        return err
+    }
+    c.id = id
+    return nil
+}
+func (c *WSCanal) iniciar(db *database.Db) error {
+    IniciarHub(c)
+    query := fmt.Sprintf("UPDATE canal SET online = true WHERE id = %d", c.id)
+    _, err := db.ExecAndLog(query)
+    if err != nil {
+        if erroFecharCanal := c.fechar(db); erroFecharCanal != nil {
+            fmt.Println("Erro ao inicar canal e ao tentar fechar canal")
+            fmt.Println(err)
+            fmt.Println(erroFecharCanal)
+            return erroFecharCanal
+        }
+        return err
+    }
+    return nil
+}
+func (c *WSCanal) buscarCanalBanco(db *database.Db) error {
+    query := fmt.Sprintf("SELECT id, nome FROM canal WHERE nome = '%s' LIMIT 1", c.nome)
+    row := db.QueryRowAndLog(query)
+    if row.Err() == sql.ErrNoRows {
+        return row.Err()
+    }
+    if err := row.Scan(&c.id, &c.nome); err != nil {
+        return err
+    }
+    return nil
 }
 func FecharCanalHandler(c *gin.Context) {
     var erros []string
@@ -116,9 +162,9 @@ func FecharCanalHandler(c *gin.Context) {
         })
         return
     }
-    canal.fechar()
-    sql := fmt.Sprintf("UPDATE canal SET online = false WHERE id = %d", canal.id)
     banco := database.ConnectionConstructor()
+    canal.fechar(banco)
+    sql := fmt.Sprintf("UPDATE canal SET online = false WHERE id = %d", canal.id)
     resultado, err := banco.ExecAndLog(sql)
     defer banco.Conn.Close()
     fmt.Println(resultado)
@@ -132,12 +178,32 @@ func FecharCanalHandler(c *gin.Context) {
     return
 }
 func IniciarCanalHandler(c *gin.Context) {
-
+    idCanal, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "mensagem": "Falha",
+            "erro": "Id de canal inválido",
+        })
+        return
+    }
+    banco := database.ConnectionConstructor()
+    canal := canalConstructor(int64(idCanal), "")
+    if err := canal.buscarCanalBanco(banco); err != nil {
+        defer banco.Conn.Close()
+        fmt.Println(err)
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    err = canal.iniciar(banco)
+    defer banco.Conn.Close()
+    if err != nil {
+        fmt.Println(err)
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
 }
 func CriarCanalHandler(c *gin.Context) {
     var erros []string
-//    var _canal WSCanal
-    //var id int64
     nomeCanal := c.Query("nomeCanal")
     if len(nomeCanal) < 5 {
         erros = append(erros, "nome canal inválido")
@@ -149,43 +215,27 @@ func CriarCanalHandler(c *gin.Context) {
     }
     banco := database.ConnectionConstructor()
     // verifica se canal já está registrado
-    query := fmt.Sprintf("SELECT id FROM canal WHERE nome = '%s' LIMIT 1", nomeCanal)
-    linha := banco.QueryRowAndLog(query)
-    if linha.Err() == sql.ErrNoRows {
-        //criar registro no banco
-        query = fmt.Sprintf("INSERT INTO canal (nome) VALUES ('%s')", nomeCanal)
-        result, err := banco.ExecAndLog(query)
-        defer banco.Conn.Close()
-        if err != nil {
+    var canal WSCanal
+    canal.nome = nomeCanal
+    err := canal.buscarCanalBanco(banco)
+    if err != nil {
+        if err = canal.registrarCanalBanco(banco); err != nil {
             fmt.Println(err)
-            if utils.VerificaPadrao("Duplicate entry '([^']*)' for key 'canal.nome'", err.Error()) {
-                c.JSON(http.StatusBadRequest, gin.H {
-                    "mensagem": "falha",
-                    "erro" : fmt.Sprintf("Nome de canal %s já está sendo utilizado", nomeCanal),
-                })
-                return
-            }
             c.AbortWithStatus(http.StatusInternalServerError)
+            defer banco.Conn.Close()
             return
         }
-        _, err = result.LastInsertId()
-        if err != nil {
-            c.AbortWithStatus(http.StatusInternalServerError)
-            return
-        }
-    } else {
-    //    var canal WSCanal
     }
-    /*
-
-    canal := canalConstructor(id, nomeCanal)
+    defer banco.Conn.Close()
+    // criar canal e iniciar channels do mesmo
+    canal = canalConstructor(canal.id, canal.nome)
     canais[nomeCanal]= &canal
     c.JSON(http.StatusOK, gin.H{
         "mensagem": "Canal criado!",
-        "id": id,
-        "nome": nomeCanal,
+        "id": canal.id,
+        "nome": canal.nome,
     })
-    return*/
+    return
 }
 func ListarCanaisHandler(c *gin.Context) {
     listaCanais := make([]string, 0, len(canais))
@@ -242,7 +292,6 @@ func IniciarCanalPadrao() {
 	log.Println("Canal padrão inicializado")
 	go IniciarHub(defaultChannel)
 }
-
 func IniciarHub(canal *WSCanal) {
 	for {
 		select {
