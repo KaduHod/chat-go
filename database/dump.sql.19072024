@@ -27,10 +27,8 @@ CREATE TABLE `canal` (
   `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `nome` varchar(255) DEFAULT NULL,
-  `online` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `nome` (`nome`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -39,7 +37,7 @@ CREATE TABLE `canal` (
 
 LOCK TABLES `canal` WRITE;
 /*!40000 ALTER TABLE `canal` DISABLE KEYS */;
-INSERT INTO `canal` VALUES (1,'2024-06-30 14:58:16',NULL,'teste',0),(6,'2024-07-20 13:39:43','2024-07-20 13:39:43','canal da nathy e do kady',0),(7,'2024-07-20 13:43:07','2024-07-20 22:55:33','crypto',0),(11,'2024-07-20 21:32:31','2024-07-20 21:32:31','andromeda',0),(12,'2024-07-20 21:33:43','2024-07-20 21:33:43','gargantua',0);
+INSERT INTO `canal` VALUES (1,'2024-06-30 14:58:16',NULL,'teste');
 /*!40000 ALTER TABLE `canal` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -139,7 +137,7 @@ CREATE TABLE `usuario` (
   `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `apelido` (`apelido`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -148,7 +146,6 @@ CREATE TABLE `usuario` (
 
 LOCK TABLES `usuario` WRITE;
 /*!40000 ALTER TABLE `usuario` DISABLE KEYS */;
-INSERT INTO `usuario` VALUES (1,'Kaduhodi user name','Kaduhodi','2024-07-08 12:29:29','2024-07-08 12:29:29'),(2,'carlosAl user name','carlosAl','2024-07-08 12:32:03','2024-07-08 12:32:03'),(3,'Arnilloy user name','Arnilloy','2024-07-08 16:57:11','2024-07-08 16:57:11');
 /*!40000 ALTER TABLE `usuario` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -221,4 +218,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-07-20 23:10:11
+-- Dump completed on 2024-07-04  0:08:34
