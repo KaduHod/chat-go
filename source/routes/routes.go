@@ -18,6 +18,8 @@ func Router (router *gin.Engine) {
 		c.HTML(http.StatusOK, "grafico.html", gin.H{})
 	})
 	router.POST("/logar", services.LogarUsuario)
+    router.GET("/chat/canais", services.ListarCanaisHandler)
+    router.GET("chat/criar", services.CriarCanalHandler)
 	router.GET("/ws", services.WebsocketHandler)
 	router.GET("/financas/juroscomposto/simular",func(c *gin.Context) {
 		var aplicacao financas.AplicacaoFinanceira
@@ -60,7 +62,7 @@ func Router (router *gin.Engine) {
 		frequenciaAumentoAporte := financas.PegaTipoFrequencia(c.Query("frequenciaAumentoAporte"))
 		aplicacao.QuantidadeDeMeses = quantidadeDeMeses
 		aplicacao.ValorInicial = valorInicial
-		aplicacao.Taxa = taxa 
+		aplicacao.Taxa = taxa
 		aporte.ValorAporte = valorAporte
 		aporte.ValorAumentoAporte = valorAumentoAporte
 		aporte.FrequenciaAporte = frequenciaAporte
