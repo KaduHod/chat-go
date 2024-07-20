@@ -101,6 +101,7 @@ func (c *WSCanal) fechar(db *database.Db) error {
     close(c.transmissao)
     close(c.entrar)
     close(c.sair)
+    delete(canais, c.nome)
     return nil
 }
 func (c *WSCanal) registrarCanalBanco(db *database.Db) error {
@@ -117,7 +118,11 @@ func (c *WSCanal) registrarCanalBanco(db *database.Db) error {
     return nil
 }
 func (c *WSCanal) iniciar(db *database.Db) error {
-    IniciarHub(c)
+    fmt.Println(fmt.Sprintf("Iniciando canal %s", c.nome))
+    go IniciarHub(c)
+    if _, jaOnline := canais[c.nome]; !jaOnline {
+        canais[c.nome] = c
+    }
     query := fmt.Sprintf("UPDATE canal SET online = true WHERE id = %d", c.id)
     _, err := db.ExecAndLog(query)
     if err != nil {
@@ -132,7 +137,7 @@ func (c *WSCanal) iniciar(db *database.Db) error {
     return nil
 }
 func (c *WSCanal) buscarCanalBanco(db *database.Db) error {
-    query := fmt.Sprintf("SELECT id, nome FROM canal WHERE nome = '%s' LIMIT 1", c.nome)
+    query := fmt.Sprintf("SELECT id, nome FROM canal WHERE nome = '%s' OR id = %d LIMIT 1", c.nome, c.id)
     row := db.QueryRowAndLog(query)
     if row.Err() == sql.ErrNoRows {
         return row.Err()
@@ -143,33 +148,36 @@ func (c *WSCanal) buscarCanalBanco(db *database.Db) error {
     return nil
 }
 func FecharCanalHandler(c *gin.Context) {
-    var erros []string
-    nomeCanal := c.Query("nomeCanal")
-    if len(nomeCanal) < 5 {
-        erros = append(erros, "nome canal inválido")
+    idCanal, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{
-            "message":"falha",
-            "erros": erros,
-        })
-        return
-    }
-    canal, existe := canais[nomeCanal]
-    if !existe {
-        erros = append(erros, "nome canal inválido")
-        c.JSON(http.StatusBadRequest, gin.H{
-            "message":"falha",
-            "erros": erros,
+            "mensagem": "Falha",
+            "erro": "Id de canal inválido",
         })
         return
     }
     banco := database.ConnectionConstructor()
-    canal.fechar(banco)
-    sql := fmt.Sprintf("UPDATE canal SET online = false WHERE id = %d", canal.id)
-    resultado, err := banco.ExecAndLog(sql)
-    defer banco.Conn.Close()
-    fmt.Println(resultado)
-    if err != nil {
-        fmt.Println("Erro ao deletar canal de banco")
+    canal := canalConstructor(int64(idCanal), "")
+    if err = canal.buscarCanalBanco(banco); err != nil {
+        fmt.Println(err)
+        defer banco.Conn.Close()
+        c.JSON(http.StatusBadRequest, gin.H{
+            "mensagem":"falha",
+            "erro": "canal nao encontrado",
+        })
+        return
+    }
+
+    _, existe := canais[canal.nome]
+    if !existe {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "message":"falha",
+            "erros": "Canal não está online para ser fechado",
+        })
+        return
+    }
+    if err = canal.fechar(banco);err != nil {
+        fmt.Println("Erro ao fechar canal")
         fmt.Println(err)
         c.AbortWithStatus(http.StatusInternalServerError)
         return
@@ -190,8 +198,10 @@ func IniciarCanalHandler(c *gin.Context) {
     canal := canalConstructor(int64(idCanal), "")
     if err := canal.buscarCanalBanco(banco); err != nil {
         defer banco.Conn.Close()
-        fmt.Println(err)
-        c.AbortWithStatus(http.StatusInternalServerError)
+        c.JSON(http.StatusBadRequest, gin.H{
+            "mensagem":"falha",
+            "erro": "canal nao encontrado",
+        })
         return
     }
     err = canal.iniciar(banco)
@@ -201,15 +211,15 @@ func IniciarCanalHandler(c *gin.Context) {
         c.AbortWithStatus(http.StatusInternalServerError)
         return
     }
+    c.AbortWithStatus(http.StatusOK)
+    return
 }
 func CriarCanalHandler(c *gin.Context) {
-    var erros []string
     nomeCanal := c.Query("nomeCanal")
     if len(nomeCanal) < 5 {
-        erros = append(erros, "nome canal inválido")
         c.JSON(http.StatusBadRequest, gin.H{
             "message":"falha",
-            "erros": erros,
+            "erros": "nome canal inválido",
         })
         return
     }
@@ -237,7 +247,7 @@ func CriarCanalHandler(c *gin.Context) {
     })
     return
 }
-func ListarCanaisHandler(c *gin.Context) {
+func ListarCanaisOnlineHandler(c *gin.Context) {
     listaCanais := make([]string, 0, len(canais))
     for key:= range canais {
         listaCanais = append(listaCanais, key)

@@ -18,9 +18,10 @@ func Router (router *gin.Engine) {
 		c.HTML(http.StatusOK, "grafico.html", gin.H{})
 	})
 	router.POST("/logar", services.LogarUsuario)
-    router.GET("/chat/canais", services.ListarCanaisHandler)
+    router.GET("/chat/canais", services.ListarCanaisOnlineHandler)
     router.GET("/chat/criar", services.CriarCanalHandler)
     router.GET("/chat/canal/:id/iniciar", services.IniciarCanalHandler)
+    router.GET("/chat/canal/:id/fechar", services.FecharCanalHandler)
 	router.GET("/ws", services.WebsocketHandler)
 	router.GET("/financas/juroscomposto/simular",func(c *gin.Context) {
 		var aplicacao financas.AplicacaoFinanceira
