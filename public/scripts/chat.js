@@ -2,6 +2,8 @@ const AMBIENTE = "DEV"//"PROD"
 const BASEURLSERVER = AMBIENTE == "DEV" ? "localhost:3000" : "132f-2804-14c-87c4-82fb-83a5-9e0c-560d-fee5.ngrok-free.app";
 const WEBSOCKETURL = AMBIENTE == "DEV" ? "ws://" + BASEURLSERVER + "/ws" : "wss://" + BASEURLSERVER + "/ws"
 const nomeusertitulo = document.getElementById('nomeuser')
+const idcanal = document.getElementById("idcanal").value;
+const idusuario = document.getElementById("idusuario").value;
 const div_resultado = document.getElementById("chat")
 const text = document.getElementById('input')
 const botao = document.getElementById('botao')
@@ -20,24 +22,6 @@ botaoconectar.onclick = () => {
 }
 
 cadastrar = async (evt) => {
-	const avisaErro = (id = 1) => alert(`[${id}] Nome e apelido devem ter no minimo 8 caracteres`)
-	const apelido = inputapelido.value.trim();
-	let nome = apelido + " user name"
-	if(nome == "" || apelido == ""){
-		return avisaErro()
-	}
-	if(nome.length < 8 || apelido.length != 8) {
-		return avisaErro(2)
-	}
-	if(!(user = await loginServico({nome, apelido}))) {
-		console.log({user})
-		return alert("Erro ao logar :(")
-	}
-	inputEscondido.value = apelido
-	usuario = user
-	esconderElemento("cadastro")
-	esconderElemento("textotutorial")
-	nomeusertitulo.innerText = usuario.apelido == "Arnilloy" ? "Bem vinda, AMOR DA MINHA VIDA" : `Bem vindo ${usuario.apelido}`
 	mostrarElemento(nomeusertitulo.id)
 	mostrarElemento('chatcontainer');
 	conectarWS()
@@ -73,22 +57,23 @@ const loginServico = async (usuario) => {
 
 const montaMensagem =  (msg) => {
 	let cor = msg.remetente == "Arnilloy" ? "#46295A" : "#800000";
-	return `<div class="message">
-					<div class="message-content">
-						${msg.conteudo}
-					</div>
-					<div class="message-footer">
-		<span class="sender-name" style="color:${cor}">${msg.remetente}</span>
-						<span class="message-time">${formatarData()}</span>
-					</div>
-				</div>`
+	return `<div class="flex shadow-md flex-col rounded-md p-2 max-w-fit break-words h-fit bg-slate-200 my-1">
+                <div class="message-content">
+                    ${msg.conteudo}
+                </div>
+                <div class="flex justify-end mb-2">
+                    <span class="mr-1 font-bold" style="color:${cor}">${msg.remetente}</span>
+                    <span class="text-slate-600">${formatarData()}</span>
+                </div>
+            </div>`
 }
 function scrollChatToBottom() {
     var chatDiv = document.getElementById("chat");
     chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 const conectarWS = async () => {
-	ws = new WebSocket(WEBSOCKETURL)
+    const url = WEBSOCKETURL + `/canal/${idcanal}/cliente/${idusuario}`;
+	ws = new WebSocket(url)
 	botao.onclick = () => {
 		let msg = text.value
         console.log(msg)

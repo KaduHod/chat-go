@@ -1,19 +1,91 @@
 package routes
 
 import (
+	"chat/source/database"
 	"chat/source/modules/financas"
 	"chat/source/services"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 func Router (router *gin.Engine) {
-	services.IniciarCanalPadrao()
-	router.GET("/", func (c *gin.Context) {
+	router.Static("/public", "./public")
+    router.LoadHTMLGlob("templates/*")
+    router.GET("/", func (c *gin.Context) {
+        c.JSON(200, gin.H{
+            "mensagem": "Olá, algum erro aconteceu para voce estar aqui!",
+        })
+    })
+    router.GET("/home/:nome", func (c *gin.Context) {
 		c.Header("Content-type", "text/html")
-		c.HTML(http.StatusOK, "public/index.html", gin.H{})
+        nomeUsuario := c.Param("nome")
+        usuario := services.WSCliente{
+            Username: nomeUsuario,
+        }
+        banco := database.ConnectionConstructor()
+        err := usuario.BuscarRegistro(banco)
+        fmt.Println(usuario)
+        defer banco.Conn.Close()
+        if err != nil {
+            println(err)
+            c.Redirect(302, "/")
+            return
+        }
+        listaCanais, err := services.ListarCanaisService()
+        if err != nil {
+            c.HTML(http.StatusOK, "index.tmpl", gin.H{
+                "titulo": "Tivemos um problema :(. Volte mais tarde.",
+            })
+            return
+        }
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{
+            "titulo": "Bem vindo!",
+            "canais": listaCanais,
+            "usuario": usuario,
+        })
 	})
+    router.GET("/home/canal/:id/usuario/:nome", func(c *gin.Context){
+        idCanal, err := strconv.Atoi(c.Param("id"))
+        if err != nil {
+            c.Redirect(302, "/")
+            return
+        }
+        nomeUsuario := c.Param("nome")
+        usuario := services.WSCliente{
+            Username: nomeUsuario,
+        }
+        banco := database.ConnectionConstructor()
+        if err = usuario.BuscarRegistro(banco); err != nil {
+            println(err)
+            defer banco.Conn.Close()
+            c.Redirect(302, "/")
+            return
+        }
+        canal := services.WSCanal{
+            Id: int64(idCanal),
+        }
+        err = canal.BuscarRegistro(banco)
+        defer banco.Conn.Close()
+        if err != nil {
+            println(err)
+            c.Redirect(302, "/")
+            return
+        }
+        fmt.Println(usuario)
+        c.HTML(200, "chatV2.tmpl", gin.H{
+            "canal": canal,
+            "usuario": usuario,
+        })
+    })
+	router.GET("/home/chat", func (c *gin.Context) {
+		c.Header("Content-type", "text/html")
+		c.HTML(http.StatusOK, "chat.tmpl", gin.H{
+            "titulo": "Ola mundo",
+        })
+	})
+	//services.IniciarCanalPadrao()
 	router.GET("/financas/grafico", func (c* gin.Context) {
 		c.HTML(http.StatusOK, "grafico.html", gin.H{})
 	})

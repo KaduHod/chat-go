@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title></title>
+        <link href="css/style.css" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+.escondido {
+    display: none;
+}
+        </style>
+    </head>
+    <body>
+        <div class="p-2">
+            <input type="hidden" id="idcanal" value="{{ .canal.Id}}">
+            <input type="hidden" id="idusuario" value="{{ .usuario.Id}}">
+            <h1 class="text-lg">Sala: {{ .canal.Nome}}</h1>
+            <div class="flex flex-col" id="chatcontainer">
+                <div id="chat" class="flex flex-col">
+                </div>
+
+                <div id="chatbotoes" class="flex p-1">
+                    <input class="border-slate-900 border-2 shadow-md p-1 rounded-md" id="input" type="text" name="texto" value="" placeholder="Digite...">
+                    <div class="m-1">
+                        <button class="text-white rounded-md p-1 bg-slate-900" id="botao" type="button">Enviar</button>
+                        <button class="text-white rounded-md p-1 bg-slate-900" type="button" onclick="document.getElementById('chat').innerHTML = ''">Limpar</button>
+                        <button class="text-white rounded-md p-1 bg-slate-900" id="conectar" type="" name="" value="conectar">Conectar</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <script src="/public/scripts/chat.js"></script>
+    </body>
+</html>

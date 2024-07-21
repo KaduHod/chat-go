@@ -10,40 +10,37 @@ import (
 	"github.com/gin-gonic/gin"
 )
 func Logger() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Start timer
-		start := time.Now()
-		// Stop timer
-		end := time.Now()
-		latency := end.Sub(start)
+    return func(c *gin.Context) {
+        // Start timer
+        start := time.Now()
+        // Stop timer
+        end := time.Now()
+        latency := end.Sub(start)
 
-		// Log request details
-		status := c.Writer.Status()
-		clientIP := c.ClientIP()
-		method := c.Request.Method
-		path := c.Request.URL.Path
+        // Log request details
+        status := c.Writer.Status()
+        clientIP := c.ClientIP()
+        method := c.Request.Method
+        path := c.Request.URL.Path
 
-		log := fmt.Sprintf("%v | %3d | %8v | %8s | %-5s %s\n",
-			end.Format(utils.DDMMYYY_hhmmss),
-			status,
-			latency,
-			clientIP,
-			method,
-			path,
-)
+        log := fmt.Sprintf("%v | %3d | %8v | %8s | %-5s %s\n",
+        end.Format(utils.DDMMYYY_hhmmss),
+        status,
+        latency,
+        clientIP,
+        method,
+        path,
+    )
 
-		fmt.Printf(log)
-		utils.Logger("/request.log", log, "REQUISICAO", false)
-		c.Next()
-	}
+    fmt.Printf(log)
+    utils.Logger("/request.log", log, "REQUISICAO", false)
+    c.Next()
+    }
 }
 
 func main() {
 	app := gin.Default()
 	app.Use(Logger())
-	app.Static("/public", "./public")
-	app.LoadHTMLFiles("public/index.html")
-	app.LoadHTMLFiles("public/financas/grafico.html")
 	app.Use(gin.Recovery())
 	routes.Router(app)
 	app.Run(":3000")
