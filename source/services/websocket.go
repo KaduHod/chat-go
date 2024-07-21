@@ -57,6 +57,7 @@ func (cu *WSCanalCliente) alteraParaOnline(db *database.Db) error {
         fmt.Println(err)
         return err
     }
+    cu.online = true
     return nil
 }
 func (cu *WSCanalCliente) alteraParaOffline(db *database.Db) error {
@@ -66,6 +67,7 @@ func (cu *WSCanalCliente) alteraParaOffline(db *database.Db) error {
         fmt.Println(err)
         return err
     }
+    cu.online = false
     return nil
 }
 type WSCliente struct {
