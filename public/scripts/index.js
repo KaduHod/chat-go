@@ -1,4 +1,4 @@
-const AMBIENTE = "PROD"//"PROD"
+const AMBIENTE = "DEV"//"PROD"
 const BASEURLSERVER = AMBIENTE == "DEV" ? "localhost:3000" : "132f-2804-14c-87c4-82fb-83a5-9e0c-560d-fee5.ngrok-free.app";
 const WEBSOCKETURL = AMBIENTE == "DEV" ? "ws://" + BASEURLSERVER + "/ws" : "wss://" + BASEURLSERVER + "/ws"
 const nomeusertitulo = document.getElementById('nomeuser')
@@ -17,8 +17,6 @@ function sleep() {
 }
 const botaoAmaMais = document.getElementById('botaodequemamamais')
 botaoAmaMais.onclick = async () => {
-	console.log('Clicou')
-	console.log(inputEscondido, msgs)
 	if(inputEscondido.value == "kaduhodi") {
 		for(let c=0; c<msgs.length;c++) {
 			let msg_ = {
@@ -50,13 +48,13 @@ botaocadastrar.onclick = async (evt) => {
 	}
 	if(!(user = await loginServico({nome, apelido}))) {
 		console.log({user})
-		return alert("Erro ao logar :(")	
+		return alert("Erro ao logar :(")
 	}
 	inputEscondido.value = apelido
 	usuario = user
 	esconderElemento("cadastro")
 	esconderElemento("textotutorial")
-	nomeusertitulo.innerText = usuario.apelido == "Arnilloy" ? "Bem vinda, AMOR DA MINHA VIDA" : `Bem vindo ${usuario.apelido}` 
+	nomeusertitulo.innerText = usuario.apelido == "Arnilloy" ? "Bem vinda, AMOR DA MINHA VIDA" : `Bem vindo ${usuario.apelido}`
 	mostrarElemento(nomeusertitulo.id)
 	mostrarElemento('chatcontainer');
 	conectarWS()
@@ -64,7 +62,7 @@ botaocadastrar.onclick = async (evt) => {
 
 const mostrarElemento = id => {
 	const elemento = document.getElementById(id)
-	if(elemento.classList.contains('escondido')) elemento.classList.remove('escondido') 
+	if(elemento.classList.contains('escondido')) elemento.classList.remove('escondido')
 	return
 }
 
@@ -109,12 +107,9 @@ function scrollChatToBottom() {
 const conectarWS = async () => {
 	ws = new WebSocket(WEBSOCKETURL)
 	botao.onclick = () => {
-		let msg = {
-			remetente: usuario.apelido,
-			conteudo: text.value
-		}
-		console.log({msg})
-		ws.send(JSON.stringify(msg))
+		let msg = text.value
+        console.log(msg)
+		ws.send(msg)
 		text.value = ""
 	}
 
