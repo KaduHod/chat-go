@@ -393,6 +393,36 @@ func ListarCanaisOnlineHandler(c *gin.Context) {
         "status": "sucesso",
     })
 }
+type WSCanalApi struct {
+    Id int64 `json:"id"`
+    Nome string `json:"nome"`
+}
+func ListarCanaisHandler(c *gin.Context){
+    banco := database.ConnectionConstructor()
+    query := fmt.Sprintf("SELECT id, nome FROM canal")
+    linhas, err := banco.QueryAndLog(query)
+    defer banco.Conn.Close()
+    if err != nil {
+        println(err)
+        c.AbortWithStatus(500)
+        return
+    }
+    var listaCanais []WSCanalApi
+    for linhas.Next() {
+        var linha WSCanalApi
+        if err = linhas.Scan(&linha.Id, &linha.Nome) ;err != nil {
+            println(err)
+            c.AbortWithStatus(500)
+            return
+        }
+        listaCanais = append(listaCanais, linha)
+    }
+    c.JSON(200, gin.H{
+        "status":"sucesso",
+        "canais": listaCanais,
+    })
+    return
+}
 func AdicionarUsuarioCanalHandler(c *gin.Context) {
     userId, err := strconv.Atoi(c.Param("id"))
     if err != nil {

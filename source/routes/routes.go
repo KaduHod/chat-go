@@ -12,13 +12,14 @@ func Router (router *gin.Engine) {
 	services.IniciarCanalPadrao()
 	router.GET("/", func (c *gin.Context) {
 		c.Header("Content-type", "text/html")
-		c.HTML(http.StatusOK, "index.html", gin.H{})
+		c.HTML(http.StatusOK, "public/index.html", gin.H{})
 	})
 	router.GET("/financas/grafico", func (c* gin.Context) {
 		c.HTML(http.StatusOK, "grafico.html", gin.H{})
 	})
 	router.POST("/logar", services.LogarUsuario)
-    router.GET("/chat/canais", services.ListarCanaisOnlineHandler)
+    router.GET("/chat/canais/online", services.ListarCanaisOnlineHandler)
+    router.GET("/chat/canais", services.ListarCanaisHandler)
     router.GET("/chat/criar", services.CriarCanalHandler)
     router.GET("/chat/canal/:id/iniciar", services.IniciarCanalHandler)
     router.GET("/chat/canal/:id/fechar", services.FecharCanalHandler)
