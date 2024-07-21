@@ -737,9 +737,7 @@ func IniciarHub(canal *WSCanal) {
                 }
             }
         case mensagem := <-canal.transmissao:
-            log.Printf("Transmitindo mensagem: [%s] [%s] aquii", mensagem.Conteudo, mensagem.Remetente)
             for cliente := range canal.clientes {
-                fmt.Println("Mensagem >>", cliente.idsocket, " ", mensagem)
                 select {
                 case cliente.enviar <- mensagem:
                 default:
