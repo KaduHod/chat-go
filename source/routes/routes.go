@@ -22,6 +22,8 @@ func Router (router *gin.Engine) {
     router.GET("/chat/criar", services.CriarCanalHandler)
     router.GET("/chat/canal/:id/iniciar", services.IniciarCanalHandler)
     router.GET("/chat/canal/:id/fechar", services.FecharCanalHandler)
+    router.GET("/chat/usuario/:id/canal/:idcanal/entrar", services.AdicionarUsuarioCanalHandler)
+    router.GET("/chat/usuario/:id/canal/:idcanal/sair", services.RemoverUsuarioCanalHandler)
 	router.GET("/ws", services.WebsocketHandler)
 	router.GET("/financas/juroscomposto/simular",func(c *gin.Context) {
 		var aplicacao financas.AplicacaoFinanceira
