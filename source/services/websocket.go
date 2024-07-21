@@ -336,15 +336,6 @@ func ListarCanaisOnlineHandler(c *gin.Context) {
         "mensagem": "sucesso",
     })
 }
-func criaRegistroUsuarioCanal(idUsuario int64, idCanal int64, db *database.Db) error {
-    query := fmt.Sprintf("INSERT INTO usuariocanal (idusuario, idcanal, online) VALUES (%d, %d, true)", idUsuario, idCanal)
-    _, err := db.ExecAndLog(query)
-    if err != nil {
-        fmt.Println(err)
-        return err
-    }
-    return nil
-}
 func AdicionarUsuarioCanalHandler(c *gin.Context) {
     userId, err := strconv.Atoi(c.Param("id"))
     if err != nil {
