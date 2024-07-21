@@ -5,7 +5,6 @@ p {
 	color:white;
 }
 body {
-	background-image: url('/public/natasha-triste.jpg');
 	background-size: cover; /* Redimensiona a imagem para cobrir o fundo */
 	background-position: center; /* Centraliza a imagem */
 	background-repeat: no-repeat; /* Evita a repetição da imagem */
@@ -43,7 +42,7 @@ h1 {
 	border: 1px solid #ccc; /* Adiciona uma borda para visualização */
 }
 #chat {
-	
+
 }
 
 #chatbotoes{
