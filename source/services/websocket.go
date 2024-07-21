@@ -373,415 +373,415 @@ func CriarCanalHandler(c *gin.Context) {
     }
     defer banco.Conn.Close()
     // criar canal e iniciar channels do mesmo
-        canal = canalConstructor(canal.Id, canal.Nome)
-        canais[nomeCanal]= &canal
-        c.JSON(http.StatusOK, gin.H{
-            "status": "Canal criado!",
-            "id": canal.Id,
-            "nome": canal.Nome,
-        })
-        return
+    canal = canalConstructor(canal.Id, canal.Nome)
+    canais[nomeCanal]= &canal
+    c.JSON(http.StatusOK, gin.H{
+        "status": "Canal criado!",
+        "id": canal.Id,
+        "nome": canal.Nome,
+    })
+    return
+}
+func ListarCanaisOnlineHandler(c *gin.Context) {
+    listaCanais := make([]string, 0, len(canais))
+    for key:= range canais {
+        listaCanais = append(listaCanais, key)
     }
-    func ListarCanaisOnlineHandler(c *gin.Context) {
-        listaCanais := make([]string, 0, len(canais))
-        for key:= range canais {
-            listaCanais = append(listaCanais, key)
-        }
 
-        c.JSON(http.StatusOK, gin.H{
-            "canais": listaCanais,
-            "status": "sucesso",
-        })
-    }
-    type WSCanalApi struct {
-        Id int64 `json:"id"`
-        Nome string `json:"nome"`
-    }
-    func ListarCanaisHandler(c *gin.Context){
-        listaCanais, err := ListarCanaisService()
-        if err != nil {
-            c.AbortWithStatus(500)
-            return
-        }
-        c.JSON(200, gin.H{
-            "status":"sucesso",
-            "canais": listaCanais,
-        })
+    c.JSON(http.StatusOK, gin.H{
+        "canais": listaCanais,
+        "status": "sucesso",
+    })
+}
+type WSCanalApi struct {
+    Id int64 `json:"id"`
+    Nome string `json:"nome"`
+}
+func ListarCanaisHandler(c *gin.Context){
+    listaCanais, err := ListarCanaisService()
+    if err != nil {
+        c.AbortWithStatus(500)
         return
     }
-    func ListarCanaisService() ([]WSCanalApi, error) {
-        var listaCanais []WSCanalApi
-        banco := database.ConnectionConstructor()
-        query := fmt.Sprintf("SELECT id, nome FROM canal ORDER BY id")
-        linhas, err := banco.QueryAndLog(query)
-        defer banco.Conn.Close()
-        if err != nil {
-            println(err)
+    c.JSON(200, gin.H{
+        "status":"sucesso",
+        "canais": listaCanais,
+    })
+    return
+}
+func ListarCanaisService() ([]WSCanalApi, error) {
+    var listaCanais []WSCanalApi
+    banco := database.ConnectionConstructor()
+    query := fmt.Sprintf("SELECT id, nome FROM canal ORDER BY id")
+    linhas, err := banco.QueryAndLog(query)
+    defer banco.Conn.Close()
+    if err != nil {
+        println(err)
+        return listaCanais, err
+    }
+    for linhas.Next() {
+        var linha WSCanalApi
+        if err = linhas.Scan(&linha.Id, &linha.Nome) ;err != nil {
             return listaCanais, err
         }
-        for linhas.Next() {
-            var linha WSCanalApi
-            if err = linhas.Scan(&linha.Id, &linha.Nome) ;err != nil {
-                return listaCanais, err
-            }
-            listaCanais = append(listaCanais, linha)
-        }
-        return listaCanais, nil
+        listaCanais = append(listaCanais, linha)
     }
-    func AdicionarUsuarioCanalHandler(c *gin.Context) {
-        userId, err := strconv.Atoi(c.Param("id"))
-        if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H {
-                "status": "falha",
-                "erro": "id de usuario invalido",
-            })
-            return
-        }
-        canalId, err := strconv.Atoi(c.Param("idcanal"))
-        if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H {
-                "status": "falha",
-                "erro": "id de canal invalido",
-            })
-            return
-        }
-        cliente := clienteConstructor(int64(userId))
-        banco := database.ConnectionConstructor()
-        defer banco.Conn.Close()
-        if err = cliente.BuscarRegistro(banco); err != nil {
-            defer banco.Conn.Close()
-            if err == sql.ErrNoRows {
-                c.JSON(http.StatusNotFound, gin.H{
-                    "status": "falha",
-                    "erro": "Usuario nao encontrado",
-                })
-                return
-            }
-            fmt.Println(err)
-            c.AbortWithStatus(http.StatusInternalServerError)
-            return
-        }
-        canal := canalConstructor(int64(canalId), "")
-        if err = canal.BuscarRegistro(banco); err != nil {
-            defer banco.Conn.Close()
-            if err == sql.ErrNoRows {
-                c.JSON(http.StatusNotFound, gin.H{
-                    "status": "falha",
-                    "erro": "Canal nao encontrado",
-                })
-                return
-            }
-            fmt.Println(err)
-            c.AbortWithStatus(http.StatusInternalServerError)
-            return
-        }
-        canalUsuario := WSCanalCliente{
-            idUsuario: cliente.Id,
-            idCanal: canal.Id,
-        }
-        err = canalUsuario.BuscaRegistro(banco)
-        if err != sql.ErrNoRows && err != nil {
-            fmt.Println(err)
-            defer banco.Conn.Close()
-            c.AbortWithStatus(http.StatusInternalServerError)
-            return
-        }
-        //cria registro
-        if err == sql.ErrNoRows {
-            canalUsuario.online = true
-            if err = canalUsuario.insereRegristro(banco); err != nil {
-                defer banco.Conn.Close()
-                fmt.Println(err)
-                c.AbortWithStatus(http.StatusInternalServerError)
-                return
-            } else {
-                defer banco.Conn.Close()
-                c.AbortWithStatus(http.StatusOK)
-                return
-            }
-        }
-        if canalUsuario.online {
-            defer banco.Conn.Close()
-            c.JSON(http.StatusBadRequest, gin.H{
-                "status": "falha",
-                "erro": "Usuario já está no canal!",
-            })
-            return
-        }
-        //atualiza registro
-        if !canalUsuario.online {
-            if err = canalUsuario.alteraParaOnline(banco); err != nil {
-                fmt.Println(err)
-                defer banco.Conn.Close()
-                c.AbortWithStatus(http.StatusInternalServerError)
-                return
-            }
-        }
-        defer banco.Conn.Close()
-        c.AbortWithStatus(http.StatusOK)
-        return
-    }
-    func ListaUsuariosDeCanalHandler(c *gin.Context) {
-        idCanal, err := strconv.Atoi(c.Param("id"))
-        if err != nil {
-            c.JSON(404, gin.H{
-                "erro": "Id de canal inválido",
-                "status": "falha",
-            })
-            return
-        }
-        canal := canalConstructor(int64(idCanal), "")
-        banco := database.ConnectionConstructor()
-        if err = canal.BuscarRegistro(banco); err != nil {
-            defer banco.Conn.Close()
-            if err == sql.ErrNoRows {
-                c.JSON(200, gin.H{
-                    "status": "falha",
-                    "erro": "canal nao encontrado",
-                })
-                return
-            }
-            c.AbortWithStatus(500)
-            return
-        }
-        clientes, err := canal.buscarClientes(banco)
-        defer banco.Conn.Close()
-        if err != nil {
-            c.AbortWithStatus(500)
-            return
-        }
-        c.JSON(200, gin.H{
-            "status": "sucesso",
-            "clientes": clientes,
+    return listaCanais, nil
+}
+func AdicionarUsuarioCanalHandler(c *gin.Context) {
+    userId, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H {
+            "status": "falha",
+            "erro": "id de usuario invalido",
         })
         return
     }
-    func RemoverUsuarioCanalHandler(c *gin.Context) {
-        userId, err := strconv.Atoi(c.Param("id"))
-        if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H {
-                "status": "falha",
-                "erro": "id de usuario invalido",
-            })
-            return
-        }
-        canalId, err := strconv.Atoi(c.Param("idcanal"))
-        if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H {
-                "status": "falha",
-                "erro": "id de canal invalido",
-            })
-            return
-        }
-        banco := database.ConnectionConstructor()
-        canalUsuario := WSCanalCliente{
-            idUsuario: int64(userId),
-            idCanal: int64(canalId),
-        }
-        if err = canalUsuario.BuscaRegistro(banco); err != nil {
-            defer banco.Conn.Close()
-            if err == sql.ErrNoRows {
-                c.JSON(http.StatusBadRequest, gin.H{
-                    "status": "falha",
-                    "erro": "Usuario não está no canal!",
-                })
-            }
-            c.AbortWithStatus(http.StatusInternalServerError)
-            return
-        }
-        if !canalUsuario.online {
-            defer banco.Conn.Close()
-            c.JSON(http.StatusBadRequest, gin.H{
-                "status": "falha",
-                "erro": "Usuário nao está online no canal",
-            })
-            return
-        }
-        err = canalUsuario.alteraParaOffline(banco)
-        defer banco.Conn.Close()
-        if  err != nil {
-            fmt.Println(err)
-            c.AbortWithStatus(http.StatusInternalServerError)
-            return
-        }
-        c.AbortWithStatus(http.StatusOK)
+    canalId, err := strconv.Atoi(c.Param("idcanal"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H {
+            "status": "falha",
+            "erro": "id de canal invalido",
+        })
         return
     }
-    func WebsocketHandlerV2(c *gin.Context) {
-        idCanal, err := strconv.Atoi(c.Param("idcanal"))
-        if err != nil {
-            fmt.Println(err)
-            c.JSON(http.StatusBadRequest, gin.H{
+    cliente := clienteConstructor(int64(userId))
+    banco := database.ConnectionConstructor()
+    defer banco.Conn.Close()
+    if err = cliente.BuscarRegistro(banco); err != nil {
+        defer banco.Conn.Close()
+        if err == sql.ErrNoRows {
+            c.JSON(http.StatusNotFound, gin.H{
                 "status": "falha",
-                "erro": "Id de canal nao inválido!",
+                "erro": "Usuario nao encontrado",
             })
             return
         }
-        idUsuario, err := strconv.Atoi(c.Param("idusuario"))
-        if err != nil {
-            fmt.Println(err)
-            c.JSON(http.StatusBadRequest, gin.H{
+        fmt.Println(err)
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    canal := canalConstructor(int64(canalId), "")
+    if err = canal.BuscarRegistro(banco); err != nil {
+        defer banco.Conn.Close()
+        if err == sql.ErrNoRows {
+            c.JSON(http.StatusNotFound, gin.H{
                 "status": "falha",
-                "erro": "Id de usuario inválido!",
+                "erro": "Canal nao encontrado",
             })
             return
         }
-        banco := database.ConnectionConstructor()
-        canal := canalConstructor(int64(idCanal), "")
-        if err = canal.BuscarRegistro(banco); err != nil {
+        fmt.Println(err)
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    canalUsuario := WSCanalCliente{
+        idUsuario: cliente.Id,
+        idCanal: canal.Id,
+    }
+    err = canalUsuario.BuscaRegistro(banco)
+    if err != sql.ErrNoRows && err != nil {
+        fmt.Println(err)
+        defer banco.Conn.Close()
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    //cria registro
+    if err == sql.ErrNoRows {
+        canalUsuario.online = true
+        if err = canalUsuario.insereRegristro(banco); err != nil {
             defer banco.Conn.Close()
             fmt.Println(err)
-            c.JSON(http.StatusBadRequest, gin.H{
-                "status": "falha",
-                "erro": "Canal não encontrado",
-            })
+            c.AbortWithStatus(http.StatusInternalServerError)
             return
-        }
-        cliente := clienteConstructor(int64(idUsuario))
-        if err = cliente.BuscarRegistro(banco); err != nil {
+        } else {
             defer banco.Conn.Close()
-            fmt.Println(err)
-            c.JSON(http.StatusBadRequest, gin.H{
-                "status": "falha",
-                "erro": "Usuário não encontrado",
-            })
+            c.AbortWithStatus(http.StatusOK)
             return
         }
-        canalUsuario := WSCanalCliente{
-            idUsuario: cliente.Id,
-            idCanal: canal.Id,
-        }
-        err = canalUsuario.BuscaRegistro(banco)
-        if err != sql.ErrNoRows && err != nil {
+    }
+    if canalUsuario.online {
+        defer banco.Conn.Close()
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Usuario já está no canal!",
+        })
+        return
+    }
+    //atualiza registro
+    if !canalUsuario.online {
+        if err = canalUsuario.alteraParaOnline(banco); err != nil {
             fmt.Println(err)
             defer banco.Conn.Close()
             c.AbortWithStatus(http.StatusInternalServerError)
             return
         }
-        //cria registro
+    }
+    defer banco.Conn.Close()
+    c.AbortWithStatus(http.StatusOK)
+    return
+}
+func ListaUsuariosDeCanalHandler(c *gin.Context) {
+    idCanal, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        c.JSON(404, gin.H{
+            "erro": "Id de canal inválido",
+            "status": "falha",
+        })
+        return
+    }
+    canal := canalConstructor(int64(idCanal), "")
+    banco := database.ConnectionConstructor()
+    if err = canal.BuscarRegistro(banco); err != nil {
+        defer banco.Conn.Close()
         if err == sql.ErrNoRows {
-            canalUsuario.online = true
-            if err = canalUsuario.insereRegristro(banco); err != nil {
-                defer banco.Conn.Close()
-                fmt.Println(err)
-                c.AbortWithStatus(http.StatusInternalServerError)
-                return
-            }
-        }
-        if canalUsuario.online {
-            defer banco.Conn.Close()
-            fmt.Println(err)
-            c.JSON(http.StatusBadRequest, gin.H{
+            c.JSON(200, gin.H{
                 "status": "falha",
-                "erro": "Usuario já está no canal!",
+                "erro": "canal nao encontrado",
             })
             return
         }
-        //atualiza registro
-        if !canalUsuario.online {
-            if err = canalUsuario.alteraParaOnline(banco); err != nil {
-                fmt.Println(err)
-                defer banco.Conn.Close()
-                c.AbortWithStatus(http.StatusInternalServerError)
-                return
+        c.AbortWithStatus(500)
+        return
+    }
+    clientes, err := canal.buscarClientes(banco)
+    defer banco.Conn.Close()
+    if err != nil {
+        c.AbortWithStatus(500)
+        return
+    }
+    c.JSON(200, gin.H{
+        "status": "sucesso",
+        "clientes": clientes,
+    })
+    return
+}
+func RemoverUsuarioCanalHandler(c *gin.Context) {
+    userId, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H {
+            "status": "falha",
+            "erro": "id de usuario invalido",
+        })
+        return
+    }
+    canalId, err := strconv.Atoi(c.Param("idcanal"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H {
+            "status": "falha",
+            "erro": "id de canal invalido",
+        })
+        return
+    }
+    banco := database.ConnectionConstructor()
+    canalUsuario := WSCanalCliente{
+        idUsuario: int64(userId),
+        idCanal: int64(canalId),
+    }
+    if err = canalUsuario.BuscaRegistro(banco); err != nil {
+        defer banco.Conn.Close()
+        if err == sql.ErrNoRows {
+            c.JSON(http.StatusBadRequest, gin.H{
+                "status": "falha",
+                "erro": "Usuario não está no canal!",
+            })
+        }
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    if !canalUsuario.online {
+        defer banco.Conn.Close()
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Usuário nao está online no canal",
+        })
+        return
+    }
+    err = canalUsuario.alteraParaOffline(banco)
+    defer banco.Conn.Close()
+    if  err != nil {
+        fmt.Println(err)
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    c.AbortWithStatus(http.StatusOK)
+    return
+}
+func WebsocketHandlerV2(c *gin.Context) {
+    idCanal, err := strconv.Atoi(c.Param("idcanal"))
+    if err != nil {
+        fmt.Println(err)
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Id de canal nao inválido!",
+        })
+        return
+    }
+    idUsuario, err := strconv.Atoi(c.Param("idusuario"))
+    if err != nil {
+        fmt.Println(err)
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Id de usuario inválido!",
+        })
+        return
+    }
+    banco := database.ConnectionConstructor()
+    canal := canalConstructor(int64(idCanal), "")
+    if err = canal.BuscarRegistro(banco); err != nil {
+        defer banco.Conn.Close()
+        fmt.Println(err)
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Canal não encontrado",
+        })
+        return
+    }
+    cliente := clienteConstructor(int64(idUsuario))
+    if err = cliente.BuscarRegistro(banco); err != nil {
+        defer banco.Conn.Close()
+        fmt.Println(err)
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Usuário não encontrado",
+        })
+        return
+    }
+    canalUsuario := WSCanalCliente{
+        idUsuario: cliente.Id,
+        idCanal: canal.Id,
+    }
+    err = canalUsuario.BuscaRegistro(banco)
+    if err != sql.ErrNoRows && err != nil {
+        fmt.Println(err)
+        defer banco.Conn.Close()
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    //cria registro
+    if err == sql.ErrNoRows {
+        canalUsuario.online = true
+        if err = canalUsuario.insereRegristro(banco); err != nil {
+            defer banco.Conn.Close()
+            fmt.Println(err)
+            c.AbortWithStatus(http.StatusInternalServerError)
+            return
+        }
+    }
+    if canalUsuario.online {
+        defer banco.Conn.Close()
+        fmt.Println(err)
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Usuario já está no canal!",
+        })
+        return
+    }
+    //atualiza registro
+    if !canalUsuario.online {
+        if err = canalUsuario.alteraParaOnline(banco); err != nil {
+            fmt.Println(err)
+            defer banco.Conn.Close()
+            c.AbortWithStatus(http.StatusInternalServerError)
+            return
+        }
+    }
+    _, existe := canais[canal.Nome]
+    if !existe {
+        canais[canal.Nome] = &canal
+        fmt.Println("Iniciando canal "+canal.Nome)
+        go IniciarHub(canais[canal.Nome])
+    }
+    conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+    if err != nil {
+        utils.Logger("/debug.log", "Erro ao iniciar websocket", "WS", false)
+        log.Println(err)
+        return
+    }
+    idConexaoSocket := c.Request.Header.Get("Sec-WebSocket-Key")
+    cliente.conn = conn
+    cliente.idsocket = idConexaoSocket
+    cliente.enviar = make(chan *WSMensagem, 256)
+    canais[canal.Nome].entrar <- &cliente
+    go cliente.escreverV2()
+    go cliente.lerV2(canal.Nome)
+    c.AbortWithStatus(200)
+}
+func WebsocketHandler(c * gin.Context) {
+    conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+    idConexaoSocket := c.Request.Header.Get("Sec-WebSocket-Key")
+    fmt.Println(idConexaoSocket)
+    if err != nil {
+        utils.Logger("/debug.log", "Erro ao iniciar websocket", "WS", false)
+        log.Println(err)
+        return
+    }
+    username := c.Param("Username")
+    cliente := &WSCliente{
+        conn: conn,
+        idsocket: idConexaoSocket,
+        enviar: make(chan *WSMensagem, 256),
+        Username: username,
+    }
+    canalPadrao := "canal1"
+    canais[canalPadrao].entrar <- cliente
+    go cliente.escrever()
+    go cliente.ler()
+}
+func canalConstructor(id int64, nome string) WSCanal {
+    canal := &WSCanal{
+        clientes:    make(map[*WSCliente]bool),
+        transmissao: make(chan *WSMensagem),
+        entrar:      make(chan *WSCliente),
+        sair:        make(chan *WSCliente),
+        Id: id,
+        Nome: nome,
+    }
+    return *canal
+}
+func clienteConstructor(id int64) WSCliente {
+    cliente := WSCliente{
+        Id: id,
+    }
+    return cliente
+}
+func IniciarCanalPadrao() {
+    defaultChannel := &WSCanal{
+        clientes:    make(map[*WSCliente]bool),
+        transmissao: make(chan *WSMensagem),
+        entrar:      make(chan *WSCliente),
+        sair:        make(chan *WSCliente),
+    }
+    canais[canalPadrao] = defaultChannel
+    log.Println("Canal padrão inicializado")
+    go IniciarHub(defaultChannel)
+}
+func IniciarHub(canal *WSCanal) {
+    for {
+        select {
+        case cliente := <-canal.entrar:
+            log.Println("Cliente entrou no canal")
+            canal.clientes[cliente] = true
+        case cliente := <-canal.sair:
+            if _, ok := canal.clientes[cliente]; ok {
+                log.Println("Cliente saiu do canal")
+                fmt.Println(cliente.Username)
+                if err := canal.removerUsuario(cliente); err != nil {
+                    delete(canal.clientes, cliente)
+                    close(cliente.enviar)
+                }
             }
-        }
-        _, existe := canais[canal.Nome]
-        if !existe {
-            canais[canal.Nome] = &canal
-            fmt.Println("Iniciando canal "+canal.Nome)
-            go IniciarHub(canais[canal.Nome])
-        }
-        conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-        if err != nil {
-            utils.Logger("/debug.log", "Erro ao iniciar websocket", "WS", false)
-            log.Println(err)
-            return
-        }
-        idConexaoSocket := c.Request.Header.Get("Sec-WebSocket-Key")
-        cliente.conn = conn
-        cliente.idsocket = idConexaoSocket
-        cliente.enviar = make(chan *WSMensagem, 256)
-        canais[canal.Nome].entrar <- &cliente
-        go cliente.escreverV2()
-        go cliente.lerV2(canal.Nome)
-        c.AbortWithStatus(200)
-    }
-    func WebsocketHandler(c * gin.Context) {
-        conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-        idConexaoSocket := c.Request.Header.Get("Sec-WebSocket-Key")
-        fmt.Println(idConexaoSocket)
-        if err != nil {
-            utils.Logger("/debug.log", "Erro ao iniciar websocket", "WS", false)
-            log.Println(err)
-            return
-        }
-        username := c.Param("Username")
-        cliente := &WSCliente{
-            conn: conn,
-            idsocket: idConexaoSocket,
-            enviar: make(chan *WSMensagem, 256),
-            Username: username,
-        }
-        canalPadrao := "canal1"
-        canais[canalPadrao].entrar <- cliente
-        go cliente.escrever()
-        go cliente.ler()
-    }
-    func canalConstructor(id int64, nome string) WSCanal {
-        canal := &WSCanal{
-            clientes:    make(map[*WSCliente]bool),
-            transmissao: make(chan *WSMensagem),
-            entrar:      make(chan *WSCliente),
-            sair:        make(chan *WSCliente),
-            Id: id,
-            Nome: nome,
-        }
-        return *canal
-    }
-    func clienteConstructor(id int64) WSCliente {
-        cliente := WSCliente{
-            Id: id,
-        }
-        return cliente
-    }
-    func IniciarCanalPadrao() {
-        defaultChannel := &WSCanal{
-            clientes:    make(map[*WSCliente]bool),
-            transmissao: make(chan *WSMensagem),
-            entrar:      make(chan *WSCliente),
-            sair:        make(chan *WSCliente),
-        }
-        canais[canalPadrao] = defaultChannel
-        log.Println("Canal padrão inicializado")
-        go IniciarHub(defaultChannel)
-    }
-    func IniciarHub(canal *WSCanal) {
-        for {
-            select {
-            case cliente := <-canal.entrar:
-                log.Println("Cliente entrou no canal")
-                canal.clientes[cliente] = true
-            case cliente := <-canal.sair:
-                if _, ok := canal.clientes[cliente]; ok {
-                    log.Println("Cliente saiu do canal")
-                    fmt.Println(cliente.Username)
+        case mensagem := <-canal.transmissao:
+            for cliente := range canal.clientes {
+                select {
+                case cliente.enviar <- mensagem:
+                default:
                     if err := canal.removerUsuario(cliente); err != nil {
                         delete(canal.clientes, cliente)
                         close(cliente.enviar)
                     }
                 }
-            case mensagem := <-canal.transmissao:
-                for cliente := range canal.clientes {
-                    select {
-                    case cliente.enviar <- mensagem:
-                    default:
-                        if err := canal.removerUsuario(cliente); err != nil {
-                            delete(canal.clientes, cliente)
-                            close(cliente.enviar)
-                        }
-                    }
-                }
             }
         }
     }
+}

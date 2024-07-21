@@ -87,7 +87,7 @@ func Router (router *gin.Engine) {
 	})
 	//services.IniciarCanalPadrao()
 	router.GET("/financas/grafico", func (c* gin.Context) {
-		c.HTML(http.StatusOK, "grafico.html", gin.H{})
+		c.HTML(http.StatusOK, "grafico.tmpl", gin.H{})
 	})
 	router.POST("/logar", services.LogarUsuario)
     router.GET("/chat/canais/online", services.ListarCanaisOnlineHandler)
