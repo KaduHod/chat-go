@@ -167,6 +167,27 @@ type WSCanal struct {
     nome string
     id int64
 }
+func (c *WSCanal) removerUsuario(cliente *WSCliente) error {
+    canalUsuario := WSCanalCliente{
+        idUsuario: cliente.id,
+        idCanal: c.id,
+    }
+    banco := database.ConnectionConstructor()
+    if err := canalUsuario.buscaRegistro(banco); err != nil {
+        defer banco.Conn.Close()
+        fmt.Println(err)
+        return err
+    }
+    if err := canalUsuario.alteraParaOffline(banco); err != nil {
+        defer banco.Conn.Close()
+        fmt.Println(err)
+        return err
+    }
+    defer banco.Conn.Close()
+    delete(c.clientes, cliente)
+    close(cliente.enviar)
+    return nil
+}
 func (c *WSCanal) fechar(db *database.Db) error {
     fmt.Println(fmt.Sprintf("Fechando canal %s", c.nome))
     sql := fmt.Sprintf("UPDATE canal SET online = false WHERE id = %d", c.id)
@@ -695,8 +716,11 @@ func IniciarHub(canal *WSCanal) {
 		case cliente := <-canal.sair:
 			if _, ok := canal.clientes[cliente]; ok {
 				log.Println("Cliente saiu do canal")
-				delete(canal.clientes, cliente)
-				close(cliente.enviar)
+                fmt.Println(cliente.username)
+                if err := canal.removerUsuario(cliente); err != nil {
+                    delete(canal.clientes, cliente)
+                    close(cliente.enviar)
+                }
 			}
 		case mensagem := <-canal.transmissao:
 			log.Printf("Transmitindo mensagem: %s", mensagem)
@@ -705,8 +729,10 @@ func IniciarHub(canal *WSCanal) {
 				select {
 				case cliente.enviar <- mensagem:
 				default:
-					close(cliente.enviar)
-					delete(canal.clientes, cliente)
+                    if err := canal.removerUsuario(cliente); err != nil {
+                        delete(canal.clientes, cliente)
+                        close(cliente.enviar)
+                    }
 				}
 			}
 		}
