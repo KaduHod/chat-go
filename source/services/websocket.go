@@ -30,6 +30,15 @@ type WSCanalCliente struct {
     idCanal int64
     online bool
 }
+func (cu *WSCanalCliente) insereRegristro(db *database.Db) error {
+    query := fmt.Sprintf("INSERT INTO usuariocanal (idusuario, idcanal, online) VALUES (%d, %d, true)", cu.idUsuario, cu.idCanal)
+    _, err := db.ExecAndLog(query)
+    if err != nil {
+        fmt.Println(err)
+        return err
+    }
+    return nil
+}
 func (cu *WSCanalCliente) buscaRegistro(db *database.Db) error {
     query := fmt.Sprintf("SELECT id, online FROM usuariocanal WHERE idusuario = %d AND idcanal = %d", cu.idUsuario, cu.idCanal)
     linha := db.QueryRowAndLog(query)
@@ -396,12 +405,14 @@ func AdicionarUsuarioCanalHandler(c *gin.Context) {
     }
     //cria registro
     if err == sql.ErrNoRows {
-        defer banco.Conn.Close()
-        if err = criaRegistroUsuarioCanal(canalUsuario.idUsuario, canalUsuario.idCanal, banco); err != nil {
+        canalUsuario.online = true
+        if err = canalUsuario.insereRegristro(banco); err != nil {
+            defer banco.Conn.Close()
             fmt.Println(err)
             c.AbortWithStatus(http.StatusInternalServerError)
             return
         } else {
+            defer banco.Conn.Close()
             c.AbortWithStatus(http.StatusOK)
             return
         }
@@ -527,8 +538,9 @@ func WebsocketHandlerV2(c *gin.Context) {
     }
     //cria registro
     if err == sql.ErrNoRows {
-        defer banco.Conn.Close()
-        if err = criaRegistroUsuarioCanal(canalUsuario.idUsuario, canalUsuario.idCanal, banco); err != nil {
+        canalUsuario.online = true
+        if err = canalUsuario.insereRegristro(banco); err != nil {
+            defer banco.Conn.Close()
             fmt.Println(err)
             c.AbortWithStatus(http.StatusInternalServerError)
             return
