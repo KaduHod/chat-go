@@ -165,12 +165,14 @@ CREATE TABLE `usuariocanal` (
   `idcanal` int NOT NULL,
   `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `online` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `idusuario_2` (`idusuario`,`idcanal`),
   KEY `idcanal` (`idcanal`),
   KEY `idusuario` (`idusuario`),
   CONSTRAINT `usuariocanal_ibfk_1` FOREIGN KEY (`idcanal`) REFERENCES `canal` (`id`),
   CONSTRAINT `usuariocanal_ibfk_2` FOREIGN KEY (`idusuario`) REFERENCES `usuario` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -179,6 +181,7 @@ CREATE TABLE `usuariocanal` (
 
 LOCK TABLES `usuariocanal` WRITE;
 /*!40000 ALTER TABLE `usuariocanal` DISABLE KEYS */;
+INSERT INTO `usuariocanal` VALUES (1,1,7,'2024-07-21 00:17:13','2024-07-21 01:44:46',0);
 /*!40000 ALTER TABLE `usuariocanal` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -221,4 +224,5 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-07-20 23:10:11
+-- Dump completed on 2024-07-21  1:53:57
+
