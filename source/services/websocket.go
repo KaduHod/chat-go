@@ -227,11 +227,31 @@ func (c *WSCanal) buscarRegistro(db *database.Db) error {
     }
     return nil
 }
+type WSCanalUsuarioOnline struct {
+    Apelido string `json:"username"`
+    Online bool `json:"online"`
+}
+func (c *WSCanal) buscarClientes(db *database.Db) ([]WSCanalUsuarioOnline, error) {
+    var clientes []WSCanalUsuarioOnline
+    query := fmt.Sprintf("SELECT u.apelido, uc.online FROM usuario u INNER JOIN usuariocanal uc on uc.idusuario = u.id AND uc.idcanal = %d", c.id)
+    linhas, err := db.QueryAndLog(query)
+    if err != nil {
+        return clientes, err
+    }
+    for linhas.Next() {
+        var usuario WSCanalUsuarioOnline
+        if err = linhas.Scan(&usuario.Apelido, &usuario.Online); err != nil {
+            return clientes, err
+        }
+        clientes = append(clientes, usuario)
+    }
+    return clientes, nil
+}
 func FecharCanalHandler(c *gin.Context) {
     idCanal, err := strconv.Atoi(c.Param("id"))
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "Falha",
+            "status": "Falha",
             "erro": "Id de canal inválido",
         })
         return
@@ -242,7 +262,7 @@ func FecharCanalHandler(c *gin.Context) {
         fmt.Println(err)
         defer banco.Conn.Close()
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem":"falha",
+            "status":"falha",
             "erro": "canal nao encontrado",
         })
         return
@@ -269,7 +289,7 @@ func IniciarCanalHandler(c *gin.Context) {
     idCanal, err := strconv.Atoi(c.Param("id"))
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "Falha",
+            "status": "Falha",
             "erro": "Id de canal inválido",
         })
         return
@@ -279,7 +299,7 @@ func IniciarCanalHandler(c *gin.Context) {
     if err := canal.buscarRegistro(banco); err != nil {
         defer banco.Conn.Close()
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem":"falha",
+            "status":"falha",
             "erro": "canal nao encontrado",
         })
         return
@@ -321,7 +341,7 @@ func CriarCanalHandler(c *gin.Context) {
     canal = canalConstructor(canal.id, canal.nome)
     canais[nomeCanal]= &canal
     c.JSON(http.StatusOK, gin.H{
-        "mensagem": "Canal criado!",
+        "status": "Canal criado!",
         "id": canal.id,
         "nome": canal.nome,
     })
@@ -335,14 +355,14 @@ func ListarCanaisOnlineHandler(c *gin.Context) {
 
     c.JSON(http.StatusOK, gin.H{
         "canais": listaCanais,
-        "mensagem": "sucesso",
+        "status": "sucesso",
     })
 }
 func AdicionarUsuarioCanalHandler(c *gin.Context) {
     userId, err := strconv.Atoi(c.Param("id"))
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H {
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "id de usuario invalido",
         })
         return
@@ -350,7 +370,7 @@ func AdicionarUsuarioCanalHandler(c *gin.Context) {
     canalId, err := strconv.Atoi(c.Param("idcanal"))
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H {
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "id de canal invalido",
         })
         return
@@ -362,7 +382,7 @@ func AdicionarUsuarioCanalHandler(c *gin.Context) {
         defer banco.Conn.Close()
         if err == sql.ErrNoRows {
             c.JSON(http.StatusNotFound, gin.H{
-                "mensagem": "falha",
+                "status": "falha",
                 "erro": "Usuario nao encontrado",
             })
             return
@@ -376,7 +396,7 @@ func AdicionarUsuarioCanalHandler(c *gin.Context) {
         defer banco.Conn.Close()
         if err == sql.ErrNoRows {
             c.JSON(http.StatusNotFound, gin.H{
-                "mensagem": "falha",
+                "status": "falha",
                 "erro": "Canal nao encontrado",
             })
             return
@@ -413,7 +433,7 @@ func AdicionarUsuarioCanalHandler(c *gin.Context) {
     if canalUsuario.online {
         defer banco.Conn.Close()
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "Usuario já está no canal!",
         })
         return
@@ -431,11 +451,46 @@ func AdicionarUsuarioCanalHandler(c *gin.Context) {
     c.AbortWithStatus(http.StatusOK)
     return
 }
+func ListaUsuariosDeCanalHandler(c *gin.Context) {
+    idCanal, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        c.JSON(404, gin.H{
+            "erro": "Id de canal inválido",
+            "status": "falha",
+        })
+        return
+    }
+    canal := canalConstructor(int64(idCanal), "")
+    banco := database.ConnectionConstructor()
+    if err = canal.buscarRegistro(banco); err != nil {
+        defer banco.Conn.Close()
+        if err == sql.ErrNoRows {
+            c.JSON(200, gin.H{
+                "status": "falha",
+                "erro": "canal nao encontrado",
+            })
+            return
+        }
+        c.AbortWithStatus(500)
+        return
+    }
+    clientes, err := canal.buscarClientes(banco)
+    defer banco.Conn.Close()
+    if err != nil {
+        c.AbortWithStatus(500)
+        return
+    }
+    c.JSON(200, gin.H{
+        "status": "sucesso",
+        "clientes": clientes,
+    })
+    return
+}
 func RemoverUsuarioCanalHandler(c *gin.Context) {
     userId, err := strconv.Atoi(c.Param("id"))
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H {
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "id de usuario invalido",
         })
         return
@@ -443,7 +498,7 @@ func RemoverUsuarioCanalHandler(c *gin.Context) {
     canalId, err := strconv.Atoi(c.Param("idcanal"))
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H {
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "id de canal invalido",
         })
         return
@@ -457,7 +512,7 @@ func RemoverUsuarioCanalHandler(c *gin.Context) {
         defer banco.Conn.Close()
         if err == sql.ErrNoRows {
             c.JSON(http.StatusBadRequest, gin.H{
-                "mensagem": "falha",
+                "status": "falha",
                 "erro": "Usuario não está no canal!",
             })
         }
@@ -467,7 +522,7 @@ func RemoverUsuarioCanalHandler(c *gin.Context) {
     if !canalUsuario.online {
         defer banco.Conn.Close()
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "Usuário nao está online no canal",
         })
         return
@@ -485,16 +540,18 @@ func RemoverUsuarioCanalHandler(c *gin.Context) {
 func WebsocketHandlerV2(c *gin.Context) {
     idCanal, err := strconv.Atoi(c.Param("idcanal"))
     if err != nil {
+        fmt.Println(err)
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "Id de canal nao inválido!",
         })
         return
     }
     idUsuario, err := strconv.Atoi(c.Param("idusuario"))
     if err != nil {
+        fmt.Println(err)
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "Id de usuario nao inválido!",
         })
         return
@@ -503,8 +560,9 @@ func WebsocketHandlerV2(c *gin.Context) {
     canal := canalConstructor(int64(idCanal), "")
     if err = canal.buscarRegistro(banco); err != nil {
         defer banco.Conn.Close()
+        fmt.Println(err)
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "Canal não encontrado",
         })
         return
@@ -512,8 +570,9 @@ func WebsocketHandlerV2(c *gin.Context) {
     cliente := clienteConstructor(int64(idUsuario))
     if err = cliente.buscarRegistro(banco); err != nil {
         defer banco.Conn.Close()
+        fmt.Println(err)
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "Usuário não encontrado",
         })
         return
@@ -541,8 +600,9 @@ func WebsocketHandlerV2(c *gin.Context) {
     }
     if canalUsuario.online {
         defer banco.Conn.Close()
+        fmt.Println(err)
         c.JSON(http.StatusBadRequest, gin.H{
-            "mensagem": "falha",
+            "status": "falha",
             "erro": "Usuario já está no canal!",
         })
         return
