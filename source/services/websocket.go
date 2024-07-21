@@ -785,3 +785,23 @@ func IniciarHub(canal *WSCanal) {
         }
     }
 }
+func VerificaCanaisAoIniciarServidor() {
+    banco := database.ConnectionConstructor()
+    query := "UPDATE canal SET online = false WHERE online = true"
+    _, err := banco.ExecAndLog(query)
+    defer banco.Conn.Close()
+    if err != nil {
+        fmt.Println("Erro ao verificar canais online em inicialização de servidor!")
+        panic(err)
+    }
+}
+func VerificaClientesEmCanaisAoIniciarServidor() {
+    banco := database.ConnectionConstructor()
+    query := "UPDATE usuariocanal SET online = false WHERE online = true"
+    _, err := banco.ExecAndLog(query)
+    defer banco.Conn.Close()
+    if err != nil {
+        fmt.Println("Erro ao verificar canais online em inicialização de servidor!")
+        panic(err)
+    }
+}

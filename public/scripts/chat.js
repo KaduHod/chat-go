@@ -76,6 +76,7 @@ const conectarWS = async () => {
 	ws = new WebSocket(url)
 	botao.onclick = () => {
 		let msg = text.value
+        if(msg.length == 0) return
         console.log(msg)
 		ws.send(msg)
 		text.value = ""
@@ -95,6 +96,7 @@ const conectarWS = async () => {
 	ws.onmessage = (evt) => {
 		console.log({evt});
 		let msg = JSON.parse(evt.data)
+        if(msg.conteudo == "") return
 		escreveMensagem(montaMensagem(msg))
 		scrollChatToBottom()
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"chat/source/routes"
+	"chat/source/services"
 	"chat/source/utils"
 	"fmt"
 
@@ -39,6 +40,8 @@ func Logger() gin.HandlerFunc {
 }
 
 func main() {
+    services.VerificaCanaisAoIniciarServidor()
+    services.VerificaClientesEmCanaisAoIniciarServidor()
 	app := gin.Default()
 	app.Use(Logger())
 	app.Use(gin.Recovery())
