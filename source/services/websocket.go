@@ -610,16 +610,16 @@ func RemoverUsuarioCanalHandler(c *gin.Context) {
 func WebsocketHandlerV2(c *gin.Context) {
     idCanal, err := strconv.Atoi(c.Param("idcanal"))
     if err != nil {
-        fmt.Println(err)
+        fmt.Println("1",err)
         c.JSON(http.StatusBadRequest, gin.H{
             "status": "falha",
-            "erro": "Id de canal nao inválido!",
+            "erro": "Id de canal inválido!",
         })
         return
     }
     idUsuario, err := strconv.Atoi(c.Param("idusuario"))
     if err != nil {
-        fmt.Println(err)
+        fmt.Println("2",err)
         c.JSON(http.StatusBadRequest, gin.H{
             "status": "falha",
             "erro": "Id de usuario inválido!",
@@ -640,7 +640,7 @@ func WebsocketHandlerV2(c *gin.Context) {
     cliente := clienteConstructor(int64(idUsuario))
     if err = cliente.BuscarRegistro(banco); err != nil {
         defer banco.Conn.Close()
-        fmt.Println(err)
+        fmt.Println("3",err)
         c.JSON(http.StatusBadRequest, gin.H{
             "status": "falha",
             "erro": "Usuário não encontrado",
@@ -670,7 +670,7 @@ func WebsocketHandlerV2(c *gin.Context) {
     }
     if canalUsuario.online {
         defer banco.Conn.Close()
-        fmt.Println(err)
+        fmt.Println("4",err)
         c.JSON(http.StatusBadRequest, gin.H{
             "status": "falha",
             "erro": "Usuario já está no canal!",
@@ -688,9 +688,12 @@ func WebsocketHandlerV2(c *gin.Context) {
     }
     _, existe := canais[canal.Nome]
     if !existe {
-        canais[canal.Nome] = &canal
-        fmt.Println("Iniciando canal "+canal.Nome)
-        go IniciarHub(canais[canal.Nome])
+        if err := canal.iniciar(banco); err != nil {
+            fmt.Println(err)
+            defer banco.Conn.Close()
+            c.AbortWithStatus(http.StatusInternalServerError)
+            return
+        }
     }
     conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
     if err != nil {
