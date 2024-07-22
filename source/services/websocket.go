@@ -658,6 +658,16 @@ func WebsocketHandlerV2(c *gin.Context) {
         c.AbortWithStatus(http.StatusInternalServerError)
         return
     }
+
+    if canalUsuario.online {
+        defer banco.Conn.Close()
+        fmt.Println("Usuário já está online no canal!")
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "falha",
+            "erro": "Usuario já está no canal!",
+        })
+        return
+    }
     //cria registro
     if err == sql.ErrNoRows {
         canalUsuario.online = true
@@ -667,15 +677,6 @@ func WebsocketHandlerV2(c *gin.Context) {
             c.AbortWithStatus(http.StatusInternalServerError)
             return
         }
-    }
-    if canalUsuario.online {
-        defer banco.Conn.Close()
-        fmt.Println("4",err)
-        c.JSON(http.StatusBadRequest, gin.H{
-            "status": "falha",
-            "erro": "Usuario já está no canal!",
-        })
-        return
     }
     //atualiza registro
     if !canalUsuario.online {
