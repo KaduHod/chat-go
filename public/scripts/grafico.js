@@ -20,7 +20,7 @@ const init = async () => {
 init();
 const taxa = document.getElementById('taxa')
 const AMBIENTE = "DEV"
-const URLBASE = AMBIENTE == "DEV" ? "http://localhost:3000" : "https://132f-2804-14c-87c4-82fb-83a5-9e0c-560d-fee5.ngrok-free.app" ;
+const URLBASE = AMBIENTE == "DEV" ? "http://localhost:3000" : "https://945e-186-206-40-55.ngrok-free.app" ;
 const chart = new Chart(document.getElementById('meu-grafico'), {
 	type: 'line', // Tipo de gráfico: 'line' para gráfico de linha
 	data: {
@@ -37,7 +37,11 @@ const chart = new Chart(document.getElementById('meu-grafico'), {
 });
 const ctx = document.getElementById('meu-grafico')
 botaoSimular.onclick = async () => {
-	url = `${URLBASE}/financas/juroscomposto/simular?quantidadeDeMeses=${quantidadeAnos.value * 12}&valorInicial=${valorInicial.value}&taxa=${taxa.value}&valorAporte=${valorAporte.value}&frequenciaAporte=${frequenciaAporte.value}&frequenciaAumentoAporte=${frequenciaAumentoAporte.value}&valorAumentoAporte=${valorAumentoAporte.value}` 	
+    if(quantidadeAnos.value > 80) {
+        alert("Ta achando que é matusalem e vai viver mais de 1000 anos seu desgraçado! Vai travar meu pc!!!!!")
+        return
+    }
+	url = `${URLBASE}/financas/juroscomposto/simular?quantidadeDeMeses=${quantidadeAnos.value * 12}&valorInicial=${valorInicial.value}&taxa=${taxa.value}&valorAporte=${valorAporte.value}&frequenciaAporte=${frequenciaAporte.value}&frequenciaAumentoAporte=${frequenciaAumentoAporte.value}&valorAumentoAporte=${valorAumentoAporte.value}`
 	console.log({url})
 	const res = await fetch(url);
 	if(res.status != 200) {
