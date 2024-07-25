@@ -1,5 +1,8 @@
 package utils
+
 import (
+	"bytes"
+	"io"
 	"log"
 	"net/http"
 
@@ -15,4 +18,16 @@ func RequestBody[T any](bodyDest * T, c *gin.Context) bool  {
 		return false
 	}
 	return true
+}
+func RestPostRequest(baseUrl string, dados []byte) ([]byte, *http.Response, error) {
+    respostaHttp, err := http.Post(baseUrl, "application/json", bytes.NewBuffer(dados))
+    if err != nil {
+        return nil, nil, err
+    }
+    defer respostaHttp.Body.Close()
+    corpoRespostaHttp, err := io.ReadAll(respostaHttp.Body)
+    if err != nil {
+        return nil, nil, err
+    }
+    return corpoRespostaHttp, respostaHttp, nil
 }
