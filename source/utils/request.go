@@ -31,3 +31,15 @@ func RestPostRequest(baseUrl string, dados []byte) ([]byte, *http.Response, erro
     }
     return corpoRespostaHttp, respostaHttp, nil
 }
+func RestGetRequest(baseUrl string) ([]byte, *http.Response, error) {
+    respostaHttp, err := http.Get(baseUrl)
+    if err != nil {
+        return nil, nil, err
+    }
+    defer respostaHttp.Body.Close()
+    corpoRespostaHttp, err := io.ReadAll(respostaHttp.Body)
+    if err != nil {
+        return nil, nil, err
+    }
+    return corpoRespostaHttp, respostaHttp, nil
+}
