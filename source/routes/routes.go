@@ -153,4 +153,8 @@ func Router (router *gin.Engine) {
 			"mensagem": "sucesso",
 		})
 	})
+    services.ControladorServerSendEvents(router)
+    router.GET("/eventos/teste", func(c *gin.Context) {
+        c.HTML(200, "eventos.tmpl", gin.H{})
+    })
 }
