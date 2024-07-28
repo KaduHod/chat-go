@@ -2,204 +2,133 @@ package services
 
 import (
 	"chat/source/utils"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
-const (
-    CANAIS_DN="/app/canais.dn"
-    LIMITE_CANAIS_EM_MEMORIA=10
-    LIMITE_CLIENTES_EM_MEMORIA=100
-)
 type EventStreamRequest struct {
     Mensagem string `form:"mensagem" json:"mensagem" binding:"required,max=100"`
 }
-type DaemonSSE struct {
-    listaCanaisConf ListaCanalConf
-    listaCanaisEmMemoria map[string]*Canal
-    listaClientesEmMemoria map[string]*Cliente
+type Conteudo struct {
+    Mensagem string `json:"mensagem"`
+    Remetente string `json:"remetente"`
+    Sala string `json:"sala"`
 }
-func (d *DaemonSSE) lerArquivoConf() {
-    if err := utils.LerArquivoJson[ListaCanalConf](CANAIS_DN, &d.listaCanaisConf); err != nil {
-        fmt.Println("Erro ao ler arquivo de configuração do daemon")
-        panic(err)
+type InfoSSE struct {
+    Tipo string `json:"tipo" binding:"required"`
+    Conteudo Conteudo `json:"conteudo" binding:"required"`
+}
+type CanalSSE struct {
+    Usuario string `json:"usuario"`
+    Canal chan InfoSSE
+}
+func (c *CanalSSE) gerenciarEventos(msg InfoSSE, ginCtx *gin.Context) {
+    switch tipo := msg.Tipo; tipo {
+    case "ping":
+        c.log("Ping")
+        ginCtx.SSEvent(tipo, msg.Conteudo)
+    case "chat":
+        ginCtx.SSEvent(tipo, msg.Conteudo)
+        c.log("Mensagem de chat")
+    case "painel":
+        c.log("Mensagem de painel")
     }
 }
-func (d *DaemonSSE) pegaCanalEmMemoria(id string) (*Canal, bool) {
-    canal, ok := d.listaCanaisEmMemoria[id]
-    if ok {
-        return canal, ok
-    }
-    return nil, false
+func (c *CanalSSE) log(msg string) {
+    dataAgora := utils.AgoraFormatado()
+    fmt.Printf("[%s][SSE] >> %s\n", dataAgora, msg)
 }
-func (d *DaemonSSE) pegaClienteEmMemoria(id string) (*Cliente, bool) {
-    cliente, ok := d.listaClientesEmMemoria[id]
-    if ok {
-        return cliente, ok
-    }
-    return nil, false
-}
-func (d *DaemonSSE) loop() {
+func (c *CanalSSE) ping() {
     for {
-        d.lerArquivoConf()
-        for idcanal, canalConf := range d.listaCanaisConf.Lista {
-            d.log(fmt.Sprintf("Canal -> %s", idcanal))
-            for _, cliente := range canalConf.Clientes {
-                d.log(fmt.Sprintf("\tCliente -> %s", cliente))
-            }
+        conteudo := Conteudo {
+            Mensagem: "ping",
+            Remetente: "Sistema",
         }
-        time.Sleep(4 * time.Second)
-    }
-}
-func (s *DaemonSSE) log(conteudo string) {
-    agora := utils.AgoraFormatado()
-    log := fmt.Sprintf("[%s][DAEMON SSE] >> %s",agora ,conteudo)
-    fmt.Println(log)
-}
-type ListaCanalConf struct {
-    Lista map[string]*CanalConf `json:"lista"`
-}
-func (conf *ListaCanalConf) adicionaCanal(idcanal string) {
-    var listaClientes []string
-    conf.Lista[idcanal] = &CanalConf{
-        Clientes: listaClientes,
-    }
-}
-func (conf *ListaCanalConf) adicionaClienteCanal(idcanal string ,idcliente string) error {
-    if _, existe := conf.Lista[idcanal]; !existe {
-        return errors.New("Canal nao existe para adicionar usuario")
-    }
-    conf.Lista[idcanal].Clientes = append(conf.Lista[idcanal].Clientes, idcliente)
-    return nil
-}
-func (conf *ListaCanalConf) atualizarArquivoConf() {
-    json, err := json.Marshal(conf)
-    if err != nil {
-        panic(err)
-    }
-    if err := utils.SobrescreverArquivo(CANAIS_DN, string(json)); err != nil {
-        panic(err)
-    }
-}
-type CanalConf struct {
-    Clientes []string `json:"clientes"`
-}
-type Canal struct {
-    id string
-    canal chan string
-}
-type Cliente struct {
-    id string
-    contextGin *gin.Context
-}
-func (d *DaemonSSE) criarCanal(id string) (*Canal) {
-    var canal Canal
-    if canalExistente, existe := d.pegaCanalEmMemoria(id); existe {
-        return canalExistente
-    }
-    d.listaCanaisEmMemoria[id] = &canal
-    return &canal
-}
-func ControladorServerSendEvents(router *gin.Engine) {
-    var listaCanalConf ListaCanalConf
-    listaCanalConf.Lista = map[string]*CanalConf{}
-    daemonSSE := DaemonSSE{
-        listaCanaisConf: listaCanalConf,
-        listaCanaisEmMemoria: make(map[string]*Canal),
-        listaClientesEmMemoria: make(map[string]*Cliente),
-    }
-    utils.EscreverEmArquivo(CANAIS_DN, "{}")
-    go func() {
-        daemonSSE.loop()
-    }()
-    router.GET("/sse/usuario/:idusuario/canal/:idcanal", func (c *gin.Context) {
-        iduser := c.Param("idusuario")
-        idcanal := c.Param("idcanal")
-        if _, existe := daemonSSE.pegaCanalEmMemoria(idcanal); !existe {
-            fmt.Println("Criando canal")
-            canal := &Canal{
-                id: idcanal,
-                canal: make(chan string),
-            }
-            daemonSSE.listaCanaisEmMemoria[idcanal] = canal
+        c.Canal <- InfoSSE{
+            Tipo: "ping",
+            Conteudo: conteudo,
         }
-        if _, existe := daemonSSE.pegaClienteEmMemoria(iduser); !existe {
-            fmt.Println("Criando cliente")
-            cliente := &Cliente{
-                id: iduser,
-                contextGin: c,
-            }
-            daemonSSE.listaClientesEmMemoria[iduser] = cliente
+        time.Sleep(10 * time.Second)
+    }
+}
+type GerenciadorSSE struct {
+    canais map[string]CanalSSE
+}
+func (g *GerenciadorSSE) log(msg string) {
+    dataAgora := utils.AgoraFormatado()
+    fmt.Printf("[%s][SSE] >> %s\n", dataAgora, msg)
+}
+func (g *GerenciadorSSE) criarCanal(id string) (CanalSSE, bool) {
+    if _, ok := g.canais[id]; !ok {
+        canal := CanalSSE{
+            Usuario: id,
+            Canal: make(chan InfoSSE),
         }
-        daemonSSE.lerArquivoConf()
-        _, existe := daemonSSE.listaCanaisConf.Lista[idcanal]
+        g.canais[id] = canal
+        return canal, true
+    }
+    return g.canais[id], false
+}
+func (g *GerenciadorSSE) buscarCanal(id string) (CanalSSE, bool) {
+    var canal CanalSSE
+    if canal, existe := g.canais[id]; !existe {
+        return canal, false
+    }
+    return canal, true
+}
+func HandlerSSE(router *gin.Engine) {
+    gerenciador := GerenciadorSSE{
+        canais: make(map[string]CanalSSE),
+    }
+    router.GET("/sse/:idusuario", func(c *gin.Context) {
+        canal, existe := gerenciador.buscarCanal(c.Param("idusuario"))
         if !existe {
-            daemonSSE.listaCanaisConf.adicionaCanal(idcanal)
+            canal, ok := gerenciador.criarCanal(c.Param("idusuario"))
+            fmt.Println(canal)
+            if !ok {
+                c.AbortWithStatus(500)
+            }
+            fmt.Println("Canal criado >> " + canal.Usuario)
         }
-        if err := daemonSSE.listaCanaisConf.adicionaClienteCanal(idcanal, iduser); err != nil {
-            fmt.Println(err)
-            fmt.Printf("Erro canal: %s cliente: %s", idcanal, iduser)
-            delete(daemonSSE.listaClientesEmMemoria, iduser)
-            daemonSSE.listaCanaisConf.atualizarArquivoConf()
+        c.Writer.Header().Set("Content-Type", "text/event-stream")
+        c.Writer.Header().Set("Cache-Control", "no-cache")
+        c.Writer.Header().Set("Connection", "keep-alive")
+        go canal.ping()
+        c.Stream(func(w io.Writer) bool {
+            canal = gerenciador.canais[c.Param("idusuario")]
+            if msg, ok := <- canal.Canal; ok {
+                canal.gerenciarEventos(msg, c)
+                return true
+            }
+            return false
+        })
+        return
+    })
+    router.POST("/sse/:idusuario", func(c *gin.Context) {
+        var infoParaPostar InfoSSE
+        if err := c.ShouldBind(&infoParaPostar); err != nil {
+            fmt.Println("Erro >> ", err)
             c.AbortWithStatus(400)
             return
         }
-        daemonSSE.listaCanaisConf.atualizarArquivoConf()
-        return
-    })
-    //var gerenciadorCanais GerenciadorCanais
-   // canal := make(chan string)
-   /*
-    router.POST("/event-stream", func (c *gin.Context) {
-        canal, ok := gerenciadorCanais.canais[c.Param("idcanal")]
-        if !ok {
-            c.JSON(400, gin.H{
-                "status":"falha",
-                "mensagem":"Canal nao encontrado",
-            })
+        canal, existe := gerenciador.canais[c.Param("idusuario")]
+        if !existe {
+            c.AbortWithStatus(404)
             return
         }
-        ControladorEventosPost(c, canal)
-    })
-    router.GET("/event-stream/:idcanal", func (c *gin.Context) {
-        canal, ok := gerenciadorCanais.canais[c.Param("idcanal")]
-        if !ok {
-            canal = gerenciadorCanais.criarCanal(c.Param("idncanal"))
-        }
-        canal.adicionaConexao(c)
-        //ControladorEventosGet(c, canal)
-    })
-    */
-}
-func ControladorEventosPost(c *gin.Context, canal Canal) {
-    var requisicao EventStreamRequest
-    if err := c.ShouldBind(&requisicao); err != nil {
-        c.JSON(400, gin.H{
-            "status": "falha",
-            "mensagem": err.Error(),
+        canal.Canal <- infoParaPostar
+        c.JSON(201, gin.H{
+            "status":"sucesso",
         })
         return
-    }
-    //fmt.Println(requisicao, canal)
-    canal.canal <- requisicao.Mensagem
-    c.JSON(201, gin.H{
-        "status":"criado",
     })
-    return
-}
-func ControladorEventosGet(c *gin.Context, ch chan string) {
-    c.Stream(func(w io.Writer) bool {
-        if msg, ok := <-ch; ok {
-            c.SSEvent("message", msg)
-            return true
-        }
-        return false
+    router.GET("/sse/:idusuario/view", func(c *gin.Context) {
+        c.HTML(200, "eventos.tmpl", gin.H{
+            "title":"Eventos page",
+            "idusuario": c.Param("idusuario"),
+        })
+        return
     })
-
-    return
 }
-
