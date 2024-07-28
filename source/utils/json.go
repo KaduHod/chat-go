@@ -21,6 +21,6 @@ func JsonParaStruct[T any](str string, dest *T) {
 }
 func Pretty(bts []byte) string {
 	var preetyDest bytes.Buffer
-	_ = json.Indent(&preetyDest, bts, "", "\t")
+	_ = json.Indent(&preetyDest, bts, "", "    ")
 	return string(preetyDest.Bytes())
 }

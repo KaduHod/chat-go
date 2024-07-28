@@ -43,3 +43,29 @@ func RestGetRequest(baseUrl string) ([]byte, *http.Response, error) {
     }
     return corpoRespostaHttp, respostaHttp, nil
 }
+func RestGetRequestAutenticado(baseUrl string, authToken string) ([]byte, *http.Response, error) {
+    // Cria uma nova requisição
+    req, err := http.NewRequest("GET", baseUrl, nil)
+    if err != nil {
+        return nil, nil, err
+    }
+
+    // Adiciona o header de autenticação
+    req.Header.Add("Authorization", "Bearer " + authToken)
+
+    // Executa a requisição
+    client := &http.Client{}
+    respostaHttp, err := client.Do(req)
+    if err != nil {
+        return nil, nil, err
+    }
+    defer respostaHttp.Body.Close()
+
+    // Lê o corpo da resposta
+    corpoRespostaHttp, err := io.ReadAll(respostaHttp.Body)
+    if err != nil {
+        return nil, nil, err
+    }
+
+    return corpoRespostaHttp, respostaHttp, nil
+}
