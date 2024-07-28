@@ -12,7 +12,8 @@ const (
     API_LOGIN="/_matrix/client/r0/login"
     PROVEDOR_PADRAO="https://matrix.org"
     SYNC_API="/_matrix/client/r0/sync"
-    MENSAGENS_DE_SALA="/_matrix/client/r0/rooms/%s/messages"
+    MENSAGENS_DE_SALA="/_matrix/client/v3/rooms/%s/messages"
+    CHUNK_TIPO_MENSAGEM="m.room.encrypted"
 )
 
 /*
@@ -33,6 +34,19 @@ type AutenticacaoMatrix struct {
     HomeServer string `json:"home_server"`
     IdDoDspositivo string `json:"device_id"`
     RefreshToken string
+}
+
+type Mensagem struct {
+	OriginServerTs int64  `json:"origin_server_ts"`
+	IdUsuario       string `json:"user_id"`
+	IdEvento        string `json:"event_id"`
+	Conteudo        struct {
+		Body    string `json:"body"`
+		Msgtype string `json:"msgtype"`
+	} `json:"content"`
+	IdSala string `json:"room_id"`
+	Tipo   string `json:"type"`
+	Age    int    `json:"age"`
 }
 
 func NewClienteMatrix(nomeUsuario string, urlProvedor string, senha string) ClienteMatrix {
@@ -61,6 +75,7 @@ func (c *ClienteMatrix) Login() error {
     if err != nil {
         return err
     }
+    //fmt.Println(utils.Pretty(corpoResposta))
     if respostaHttp.StatusCode != 200 {
         return errors.New("Erro ao se autenticar no servidor")
     }
@@ -80,6 +95,7 @@ func (c *ClienteMatrix) BuscarSalas() error {
     if respostaHttp.StatusCode != 200 {
         return errors.New("Erro ao sincronizar")
     }
+    //fmt.Println(utils.Pretty(corpoResposta))
     var res map[string]interface{}
     if err := json.Unmarshal(corpoResposta, &res); err != nil {
         return err
@@ -97,6 +113,35 @@ func (c *ClienteMatrix) BuscarSalas() error {
     }
     return nil
 }
-func (c *ClienteMatrix) BuscarMensagensDeSala(idSala string) error {
-    //url := fmt.Sprintf(MENSAGENS_DE_SALA, "")
+type ChunksMatrix struct {
+    Chunks []ChunkMatrix `json:"chunk"`
+    Start string `json:"start"`
+    End string `json:"end"`
+}
+type ChunkMatrix struct {
+    Content struct {
+    } `json:"content"`
+}
+func (c *ClienteMatrix) BuscarMensagensDeSala(idSala string) (ChunksMatrix ,error) {
+    path := fmt.Sprintf(MENSAGENS_DE_SALA, idSala)
+    url := fmt.Sprintf("%s%s", c.UrlDoProvedor, path)
+    corpoResposta, respostaHttp, err := utils.RestGetRequestAutenticado(url, c.Autenticacao.AccessToken)
+    var chunks ChunksMatrix
+    if err != nil {
+        return chunks, err
+    }
+    if respostaHttp.StatusCode != 200 {
+        fmt.Println(string(corpoResposta))
+        return chunks, errors.New("Erro ao buscar mensagens de canal")
+    }
+    if err := json.Unmarshal(corpoResposta, &chunks); err != nil {
+        fmt.Println("Erro ao converter resposta apra json")
+        return chunks, err
+    }
+    /*for chunk := range chunks.Chunks {
+        fmt.Println(chunk)
+    }*/
+    fmt.Println("Primeiro chunk" ,chunks.Chunks[8])
+    //fmt.Println(utils.Pretty(corpoResposta))
+    return chunks, nil
 }
