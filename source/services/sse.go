@@ -92,6 +92,15 @@ type SalaChatSSE struct {
     Id string `json:"id"`
     ClientesSala []string `json:"clientes"`
 }
+func (s *SalaChatSSE) jaEstaEmSala(id string) bool {
+    fmt.Println(s.ClientesSala)
+    for _, idcliente := range s.ClientesSala {
+        if idcliente == id {
+            return true
+        }
+    }
+    return false
+}
 func (scs *SalaChatSSE) adicionarCliente(idcliente string) {
     for _, v := range scs.ClientesSala {
         if v == idcliente {
@@ -131,7 +140,6 @@ func HandlerSSE(router *gin.Engine) {
     }
     router.GET("/sse/:idusuario/entrar/:idsala", func(c *gin.Context) {
         sala := gerenciadorSalaChat.criarSala(c.Param("idsala"))
-        sala.adicionarCliente(c.Param("idusuario"))
         canalSSECliente, existe := gerenciadorSSE.canais[c.Param("idusuario")]
         if !existe {
             c.JSON(400, gin.H{
@@ -140,6 +148,11 @@ func HandlerSSE(router *gin.Engine) {
             })
             return
         }
+        if sala.jaEstaEmSala(c.Param("idusuario")) {
+            c.AbortWithStatus(200)
+            return
+        }
+        sala.adicionarCliente(c.Param("idusuario"))
         var infoEntrouEmSala InfoSSE
         var conteudoInfoEntrouEmSala Conteudo
         conteudoInfoEntrouEmSala.Sala = c.Param("idsala")
@@ -197,7 +210,6 @@ func HandlerSSE(router *gin.Engine) {
         c.Writer.Header().Set("Content-Type", "text/event-stream")
         c.Writer.Header().Set("Cache-Control", "no-cache")
         c.Writer.Header().Set("Connection", "keep-alive")
-        go canal.ping()
         go func() {
             <-c.Request.Context().Done()
             gerenciadorSSE.removerCanal(c.Param("idusuario"))
