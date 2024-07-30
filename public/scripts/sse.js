@@ -1,20 +1,8 @@
 const iduser = document.getElementById("idusuario").value;
+const salaitemConstructor = nomeSala => `<div id="sala___${nomeSala}" class="item-card rounded">${nomeSala}</div>`
 const salas = []
 const salasMensagens = {}
 const salaItemContainer = document.getElementById("chat-salas")
-const entrarSalaValor = document.getElementById("entrar-sala-valor")
-const entrarSalaBotao = document.getElementById("entrar-sala-botao")
-const entrarEmSala = async (e) => {
-    if(entrarSalaValor.value.length == 0) return
-    let url = `http://localhost:3000/sse/${iduser}/entrar/${entrarSalaValor.value}`
-    entrarSalaValor.value = ""
-    fetch(url)
-}
-entrarSalaBotao.addEventListener("click", entrarEmSala)
-
-const salaitemConstructor = nomeSala => {
-    return `<div id="sala___${nomeSala}" class="item-card rounded">${nomeSala}</div>`
-}
 function formatarData() {
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -37,32 +25,29 @@ const montaMensagem =  (msg, remetente) => {
                 </div>
             </div>`
 }
-document.addEventListener("DOMContentLoaded", function() {
-    const eventoSSE = new EventSource(`/sse/${iduser}`);
-    eventoSSE.onerror = function(event) {
-        console.error("Erro no SSE: ", event);
-    };
-    eventoSSE.addEventListener('entrou-chat', e => {
-        console.log("TIPO",e.type)
-        let json = JSON.parse(e.data)
-        if (!salas.includes(json.conteudo.sala)) {
-            salaItemContainer.innerHTML += salaitemConstructor(json.conteudo.sala)
-        }
-        return
-    })
-    eventoSSE.addEventListener('chat-nova-mensagem', e => {
-        e.data = JSON.parse(e.data)
-        const {sala, remetente, mensagem} = JSON.parse(e.data).conteudo
-        console.log(sala, remetente, mensagem)
-        div = montaMensagem(mensagem, remetente)
-        chatContainer.innerHTML += div
-        salasMensagens[sala].push(div)
-        return
-    })
-    eventoSSE.addEventListener('chat', e => {
-        console.log(e.type)
-        console.log(e.data)
-        return
-    })
-    console.log(eventoSSE)
-});
+const eventoSSE = new EventSource(`/sse/${iduser}`);
+eventoSSE.onerror = function(event) {
+    console.error("Erro no SSE: ", event);
+};
+eventoSSE.addEventListener('entrou-chat', e => {
+    console.log("TIPO",e.type)
+    let json = JSON.parse(e.data)
+    if (!salas.includes(json.conteudo.sala)) {
+        salaItemContainer.innerHTML += salaitemConstructor(json.conteudo.sala)
+    }
+    return
+})
+eventoSSE.addEventListener('chat-nova-mensagem', e => {
+    e.data = JSON.parse(e.data)
+    const {sala, remetente, mensagem} = JSON.parse(e.data).conteudo
+    console.log(sala, remetente, mensagem)
+    div = montaMensagem(mensagem, remetente)
+    chatContainer.innerHTML += div
+    salasMensagens[sala].push(div)
+    return
+})
+eventoSSE.addEventListener('chat', e => {
+    console.log(e.type)
+    console.log(e.data)
+    return
+})

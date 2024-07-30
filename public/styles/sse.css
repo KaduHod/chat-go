@@ -1,0 +1,58 @@
+.debug{
+    border: 1px solid red
+}
+.item-cardT {
+  @apply border-2 my-2 border-green-600 min-h-16 h-16 w-full flex text-black;
+}
+.item-card {
+  border-width: 2px;
+  margin-top: 0.5rem;  /* my-2 em TailwindCSS */
+  margin-bottom: 0.5rem; /* my-2 em TailwindCSS */
+  border: 1px solid rgb(156 163 175);
+  min-height: 4rem; /* min-h-16 em TailwindCSS */
+  height: 4rem; /* h-16 em TailwindCSS */
+  width: 100%; /* w-full em TailwindCSS */
+  display: flex;
+  color: #000000; /* text-black em TailwindCSS */
+}
+.item-card-api{
+    margin-top: 0.5rem;  /* my-2 em TailwindCSS */
+    margin-bottom: 0.5rem; /* my-2 em TailwindCSS */
+    min-height: 4rem; /* min-h-16 em TailwindCSS */
+    height: 4rem; /* h-16 em TailwindCSS */
+    width: 100%; /* w-full em TailwindCSS */
+    display: flex;
+    color: #000000; /* te
+}
+.borda{
+    border: 1px solid rgb(156 163 175);
+}
+.message-footer {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 0.9em;
+  margin-bottom: 5px;
+}
+.sender-name {
+  font-weight: bold;
+--  color: #075e54;
+  margin-right: 5px;
+}
+.message-time {
+  color: #999;
+}
+.message-content {
+  font-size: 1em;
+}
+.message {
+	background-color:#c7c7c7;
+	border-radius: 8px;
+	padding: 8px 12px;
+	margin-bottom: 10px;
+	max-width: fit-content;
+	word-wrap: break-word;
+	word-break: break-word;
+	display: flex;
+	flex-direction: column;
+	height: fit-content;
+}

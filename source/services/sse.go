@@ -93,7 +93,6 @@ type SalaChatSSE struct {
     ClientesSala []string `json:"clientes"`
 }
 func (s *SalaChatSSE) jaEstaEmSala(id string) bool {
-    fmt.Println(s.ClientesSala)
     for _, idcliente := range s.ClientesSala {
         if idcliente == id {
             return true
@@ -138,7 +137,7 @@ func HandlerSSE(router *gin.Engine) {
     gerenciadorSalaChat := GerenciadorSalaChat{
         Salas: make(map[string]*SalaChatSSE),
     }
-    router.GET("/sse/:idusuario/entrar/:idsala", func(c *gin.Context) {
+    router.GET("/chat/sse/:idusuario/entrar/:idsala", func(c *gin.Context) {
         sala := gerenciadorSalaChat.criarSala(c.Param("idsala"))
         canalSSECliente, existe := gerenciadorSSE.canais[c.Param("idusuario")]
         if !existe {
@@ -167,7 +166,7 @@ func HandlerSSE(router *gin.Engine) {
         })
         return
     })
-    router.POST("/sse/:idusuario/sala/:idsala/enviar", func(c *gin.Context) {
+    router.POST("/chat/sse/:idusuario/sala/:idsala/enviar", func(c *gin.Context) {
         sala, existe := gerenciadorSalaChat.Salas[c.Param("idsala")]
         if !existe {
             c.AbortWithStatus(404)
@@ -224,25 +223,7 @@ func HandlerSSE(router *gin.Engine) {
         })
         return
     })
-    router.POST("/sse/:idusuario", func(c *gin.Context) {
-        var infoParaPostar InfoSSE
-        if err := c.ShouldBind(&infoParaPostar); err != nil {
-            fmt.Println("Erro >> ", err)
-            c.AbortWithStatus(400)
-            return
-        }
-        canal, existe := gerenciadorSSE.canais[c.Param("idusuario")]
-        if !existe {
-            c.AbortWithStatus(404)
-            return
-        }
-        canal.Canal <- infoParaPostar
-        c.JSON(201, gin.H{
-            "status":"sucesso",
-        })
-        return
-    })
-    router.GET("/sse/:idusuario/view", func(c *gin.Context) {
+    router.GET("/chat/:idusuario/view", func(c *gin.Context) {
         c.HTML(200, "eventos.tmpl", gin.H{
             "title":"Eventos page",
             "idusuario": c.Param("idusuario"),

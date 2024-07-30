@@ -90,6 +90,7 @@ func Router (router *gin.Engine) {
 		c.HTML(http.StatusOK, "grafico.tmpl", gin.H{})
 	})
 	router.POST("/logar", services.LogarUsuario)
+    /*
     router.GET("/chat/canais/online", services.ListarCanaisOnlineHandler)
     router.GET("/chat/canais", services.ListarCanaisHandler)
     router.GET("/chat/criar", services.CriarCanalHandler)
@@ -98,6 +99,7 @@ func Router (router *gin.Engine) {
     router.GET("/chat/canal/:id/usuarios", services.ListaUsuariosDeCanalHandler)
     router.GET("/chat/usuario/:id/canal/:idcanal/entrar", services.AdicionarUsuarioCanalHandler)
     router.GET("/chat/usuario/:id/canal/:idcanal/sair", services.RemoverUsuarioCanalHandler)
+    */
     router.GET("/ws/canal/:idcanal/cliente/:idusuario", services.WebsocketHandlerV2)
 	router.GET("/ws", services.WebsocketHandler)
 	router.GET("/financas/juroscomposto/simular",func(c *gin.Context) {
