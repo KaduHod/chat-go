@@ -139,7 +139,7 @@ func HandlerSSE(router *gin.Engine) {
     }
     router.GET("/chat/sse/:idusuario/entrar/:idsala", func(c *gin.Context) {
         sala := gerenciadorSalaChat.criarSala(c.Param("idsala"))
-        canalSSECliente, existe := gerenciadorSSE.canais[c.Param("idusuario")]
+        _, existe := gerenciadorSSE.canais[c.Param("idusuario")]
         if !existe {
             c.JSON(400, gin.H{
                 "status":"falha",
@@ -156,10 +156,15 @@ func HandlerSSE(router *gin.Engine) {
         var conteudoInfoEntrouEmSala Conteudo
         conteudoInfoEntrouEmSala.Sala = c.Param("idsala")
         conteudoInfoEntrouEmSala.Remetente = c.Param("idusuario")
-        conteudoInfoEntrouEmSala.Mensagem = "Você entrou em uma sala"
+        conteudoInfoEntrouEmSala.Mensagem = c.Param("idusuario") + "entrou em uma sala"
         infoEntrouEmSala.Tipo = "entrou-chat"
         infoEntrouEmSala.Conteudo = conteudoInfoEntrouEmSala
-        canalSSECliente.Canal <- infoEntrouEmSala
+        for _, clienteid := range sala.ClientesSala {
+            canalSSE, existe := gerenciadorSSE.canais[clienteid]
+            if existe {
+                canalSSE.Canal <- infoEntrouEmSala
+            }
+        }
         c.JSON(200, gin.H{
             "status":"sucesso",
             "mensagem": "sala criado e adentrada :)",
