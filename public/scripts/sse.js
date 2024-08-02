@@ -1,7 +1,9 @@
-const iduser = document.getElementById("idusuario").value;
+const iduser = document.getElementById("nomeusuario").value;
 let SALA_SELECIONADA = false;
 const salaMenuLateralContainer = document.getElementById("chat-salas")
 const chatMensagensContainer = document.getElementById("chat-aberto-mensagens")
+const botaoEnviarMensagem = document.getElementById("enviar-msg-botao")
+const inputMensagem = document.getElementById("chat-text-input")
 const listaMensagens = [];
 const listaUsuarios = [];
 const listaSalas = [];
@@ -11,7 +13,7 @@ class Utils {
     static async entrarSala(e){
         const nomeSala = document.getElementById('entrar-sala-valor').value
         if(nomeSala.length > 0) {
-            const res = await fetch("/chat/sse/"+Utils.getIdUsuarioLogado()+"/entrar/"+nomeSala)
+            const res = await fetch("/chat/sse/"+Usuario.getNomeUsuarioLogado()+"/entrar/"+nomeSala)
             if(res.status > 299) return
             SALA_SELECIONADA = nomeSala
             document.getElementById("titulo-janela-chat-aberta").innerText = nomeSala
@@ -38,24 +40,12 @@ class Utils {
         const minutes = String(now.getMinutes()).padStart(2, '0');
         return `${day}/${month} ${hours}:${minutes}`;
     }
-    static getIdUsuarioLogado() {
-        return document.getElementById("idusuario").value;
-    }
-    static adicionaSalaAMenuLateral(sala) {
-        const elementoHtml = document.createElement("div")
-        elementoHtml.setAttribute("id", sala.id)
-        elementoHtml.classList.add("item-card")
-        elementoHtml.classList.add("rounded")
-        elementoHtml.innerText = sala.nome
-        elementoHtml.addEventListener("click", Utils.selecionarSala)
-        salaMenuLateralContainer.appendChild(elementoHtml)
-    }
     static selecionarSala(e) {
         const room = Sala.buscaPorId(e.target.id)
         if(!room) {
             throw new Error("Não foi possivel encontrar a sala")
         }
-        SALA_SELECIONADA = room.id
+        SALA_SELECIONADA = room.nome
         document.getElementById("titulo-janela-chat-aberta").innerText = room.nome
         const listaSum = SalaUsuarioMensagem.buscarPorSala(room.id)
         let idsMensagens = listaSum.map(v => v.idmensagem)
@@ -77,16 +67,22 @@ class Usuario {
         this.cor = cor ?? Utils.getRandomHexColor()
     }
     ehUsuarioLogado() {
-        return this.nome === Utils.getIdUsuarioLogado()
+        return this.nome === Usuario.getNomeUsuarioLogado()
+    }
+    static getNomeUsuarioLogado() {
+        return document.getElementById("nomeusuario").value;
+    }
+    static busca(nome) {
+        return listaUsuarios.find(u => u.nome == nome)
     }
 }
 class Mensagem {
-    constructor(mensagem, idremetente){
+    constructor(mensagem, usuario){
         this.mensagem = mensagem
         this.id = "mensagem__"+Utils.generateUniqueId()
         this.data = Utils.formatarData();
-        this.idremetente = idremetente
-        this.alinhamento = Utils.getIdUsuarioLogado() === this.idremetente ? "self-start" : "self-end";
+        this.idremetente = usuario.id
+        this.alinhamento = Usuario.getNomeUsuarioLogado() !== usuario.nome ? "self-start" : "self-end";
     }
     static busca(id) {
         return listaMensagens.find(m => m.id === id)
@@ -142,17 +138,58 @@ class Mensagem {
         divPrincipal.appendChild(footerDiv);
         return divPrincipal;
     }
+    static async enviarMensagem(e){
+        const sala = Sala.buscaSalaSelecionada()
+        if(!sala) {
+            throw new Error("Sala nao encontrada!", {SALA_SELECIONADA})
+        }
+        const usuario = Usuario.busca(Usuario.getNomeUsuarioLogado())
+        const conteudoMensagem = inputMensagem.value
+        const resposta = await fetch(`/chat/sse/${usuario.nome}/sala/${sala.nome}/enviar?msg=${conteudoMensagem}`, {method:"POST"})
+        if (resposta.status != 201) {
+            const erroRequest = await resposta.json();
+            throw new Error({"mensagem":"Erro ao enviar mensagem", err: erroRequest})
+        }
+    }
 }
 class Sala {
     constructor(nomeSala){
         this.nome = nomeSala
         this.id = `sala__${this.nome}`
     }
+    montaElemento() {
+        const elementoHtml = document.createElement("div")
+        elementoHtml.setAttribute("id", this.id)
+        elementoHtml.classList.add("item-card", "rounded", "sala-menu-lateral")
+        elementoHtml.innerText = this.nome
+        elementoHtml.addEventListener("click", Utils.selecionarSala)
+        return elementoHtml;
+    }
     static busca(nome) {
         return listaSalas.find(s => s.nome === nome)
     }
     static buscaPorId(id) {
         return listaSalas.find(s => s.id === id)
+    }
+    static salasMenuLateral() {
+        return [...document.getElementsByClassName("sala-menu-lateral")].map(div => div.id)
+    }
+    static adicionaSalaAMenuLateral(sala) {
+        if(document.getElementById(sala.id)) {
+            throw new Error("Sala já esta no menu lateral!")
+        }
+        const elementoHtml = sala.montaElemento()
+        salaMenuLateralContainer.appendChild(elementoHtml)
+    }
+    static buscaSalaSelecionada() {
+        return listaSalas.find(s => s.nome === SALA_SELECIONADA)
+    }
+    async buscarUsuariosServidor() {
+        const resposta = await fetch(`/chat/sala/${this.nome}/usuarios`)
+        if(resposta.status == 404) {
+            throw new Error("Servidor nao encontrou a sala!")
+        }
+        return [...(await resposta.json()).clientes]
     }
     /*montaHtml(){
         this.html = `<div
@@ -167,6 +204,15 @@ class SalaUsuario {
         this.iduser = iduser;
         this.idsala = idsala;
     }
+    static busca({iduser, idsala}) {
+        const funcaoFiltro = !!iduser && !!idsala
+            ? (item) => item.iduser == iduser && item.idsala == idsala
+            : (!!iduser
+                ? (item) => item.iduser == iduser
+                : (item) => item.idsala == idsala
+            )
+        return listaSalasUsuarios.find(funcaoFiltro)
+    }
 }
 class SalaUsuarioMensagem {
     constructor(idsala, idusuario, idmensagem) {
@@ -180,10 +226,11 @@ class SalaUsuarioMensagem {
 }
 try {
     const eventoSSE = new EventSource(`/sse/${iduser}`);
+    botaoEnviarMensagem.addEventListener("click", Mensagem.enviarMensagem)
     eventoSSE.onerror = function(event) {
         console.error("Erro no SSE: ", event);
     };
-    eventoSSE.addEventListener('entrou-chat', e => {
+    eventoSSE.addEventListener('entrou-chat', async e => {
         const {sala, remetente} = JSON.parse(e.data).conteudo
         let room = Sala.busca(sala)
         if (!room) {
@@ -200,12 +247,26 @@ try {
             salaUsuario = new SalaUsuario(usuario.id, room.id)
             listaSalasUsuarios.push(salaUsuario)
         }
-        Utils.adicionaSalaAMenuLateral(room)
+        const usuariosJaLogadosEmSala = await room.buscarUsuariosServidor()
+        usuariosJaLogadosEmSala.forEach(nomeUsuario => {
+            let usuario = Usuario.busca(nomeUsuario)
+            if(!usuario) {
+                usuario = new Usuario(nomeUsuario)
+                listaUsuarios.push(usuario)
+            }
+            let salaUsuario = SalaUsuario.busca({iduser: usuario.id})
+            if(!salaUsuario) {
+                listaSalasUsuarios.push(new SalaUsuario(usuario.id, sala.id))
+            }
+        })
+        if(remetente == Usuario.getNomeUsuarioLogado() && !Sala.salasMenuLateral().includes(room.id)) {
+            Sala.adicionaSalaAMenuLateral(room)
+        }
     })
     eventoSSE.addEventListener('chat-nova-mensagem', e => {
         e.data = JSON.parse(e.data)
         let {sala, remetente, mensagem} = JSON.parse(e.data).conteudo
-        const user = listaUsuarios.find(user => user.nome === remetente)
+        const user = Usuario.busca(remetente)
         if(!user) {
             throw new Error("Usuario não entrou na sala")
         }
@@ -213,11 +274,10 @@ try {
         if(!room) {
             throw new Error("Sala não encontrada")
         }
-        const message = new Mensagem(mensagem, user.id)
+        const message = new Mensagem(mensagem, user)
         listaMensagens.push(message)
         const salaUsuarioMensagem = new SalaUsuarioMensagem(room.id, user.id, message.id)
         listaSalasUsuariosMensagens.push(salaUsuarioMensagem)
-        console.log(SALA_SELECIONADA, room.nome)
         if(SALA_SELECIONADA === room.nome) {
             Utils.adicionaMensagemAoChat(message)
         }

@@ -27,16 +27,16 @@ type CanalSSE struct {
 func (c *CanalSSE) gerenciarEventos(msg InfoSSE, ginCtx *gin.Context) {
     switch tipo := msg.Tipo; tipo {
     case "ping":
-        c.log("Ping")
+        //c.log("Ping")
         ginCtx.SSEvent(tipo, msg.Conteudo)
     case "chat":
-        c.log("Mensagem de chat")
+        //c.log("Mensagem de chat")
         ginCtx.SSEvent(tipo, msg)
     case "entrou-chat":
-        c.log("Cliente entrou em chat")
+        //c.log("Cliente entrou em chat")
         ginCtx.SSEvent(tipo, msg)
     case "chat-nova-mensagem":
-        c.log("Cliente enviou menagem ao chat")
+        //c.log("Cliente enviou menagem ao chat")
         ginCtx.SSEvent(tipo, msg)
     case "painel":
         c.log("Mensagem de painel")
@@ -67,6 +67,9 @@ func (g *GerenciadorSSE) log(msg string) {
     dataAgora := utils.AgoraFormatado()
     fmt.Printf("[%s][SSE] >> %s\n", dataAgora, msg)
 }
+/*
+* Criando um canal de usuario
+*/
 func (g *GerenciadorSSE) criarCanal(id string) (*CanalSSE, bool) {
     if _, ok := g.canais[id]; !ok {
         canal := CanalSSE{
@@ -78,12 +81,14 @@ func (g *GerenciadorSSE) criarCanal(id string) (*CanalSSE, bool) {
     }
     return g.canais[id], false
 }
+// Buscando um usuario
 func (g *GerenciadorSSE) buscarCanal(id string) (*CanalSSE, bool) {
     if canal, existe := g.canais[id]; !existe {
         return canal, false
     }
     return g.canais[id], true
 }
+//removendo um usuario
 func (g *GerenciadorSSE) removerCanal(id string) error {
     delete(g.canais, id)
     return nil
@@ -137,9 +142,9 @@ func HandlerSSE(router *gin.Engine) {
     gerenciadorSalaChat := GerenciadorSalaChat{
         Salas: make(map[string]*SalaChatSSE),
     }
-    router.GET("/chat/sse/:idusuario/entrar/:idsala", func(c *gin.Context) {
-        sala := gerenciadorSalaChat.criarSala(c.Param("idsala"))
-        _, existe := gerenciadorSSE.canais[c.Param("idusuario")]
+    router.GET("/chat/sse/:nomeusuario/entrar/:nomesala", func(c *gin.Context) {
+        sala := gerenciadorSalaChat.criarSala(c.Param("nomesala"))
+        _, existe := gerenciadorSSE.canais[c.Param("nomeusuario")]
         if !existe {
             c.JSON(400, gin.H{
                 "status":"falha",
@@ -147,16 +152,16 @@ func HandlerSSE(router *gin.Engine) {
             })
             return
         }
-        if sala.jaEstaEmSala(c.Param("idusuario")) {
+        if sala.jaEstaEmSala(c.Param("nomeusuario")) {
             c.AbortWithStatus(200)
             return
         }
-        sala.adicionarCliente(c.Param("idusuario"))
+        sala.adicionarCliente(c.Param("nomeusuario"))
         var infoEntrouEmSala InfoSSE
         var conteudoInfoEntrouEmSala Conteudo
-        conteudoInfoEntrouEmSala.Sala = c.Param("idsala")
-        conteudoInfoEntrouEmSala.Remetente = c.Param("idusuario")
-        conteudoInfoEntrouEmSala.Mensagem = c.Param("idusuario") + "entrou em uma sala"
+        conteudoInfoEntrouEmSala.Sala = c.Param("nomesala")
+        conteudoInfoEntrouEmSala.Remetente = c.Param("nomeusuario")
+        conteudoInfoEntrouEmSala.Mensagem = c.Param("nomeusuario") + "entrou em uma sala"
         infoEntrouEmSala.Tipo = "entrou-chat"
         infoEntrouEmSala.Conteudo = conteudoInfoEntrouEmSala
         for _, clienteid := range sala.ClientesSala {
@@ -171,8 +176,8 @@ func HandlerSSE(router *gin.Engine) {
         })
         return
     })
-    router.POST("/chat/sse/:idusuario/sala/:idsala/enviar", func(c *gin.Context) {
-        sala, existe := gerenciadorSalaChat.Salas[c.Param("idsala")]
+    router.POST("/chat/sse/:nomeusuario/sala/:nomesala/enviar", func(c *gin.Context) {
+        sala, existe := gerenciadorSalaChat.Salas[c.Param("nomesala")]
         if !existe {
             c.AbortWithStatus(404)
             return
@@ -183,43 +188,43 @@ func HandlerSSE(router *gin.Engine) {
                 "mensagem":"Conteudo de mensagem deve conter um valor!",
             })
         }
+        var infoMensagemEnviadaACanal InfoSSE
+        conteudoMnesagemEnviadaACanal := Conteudo {
+            Sala: c.Param("nomesala"),
+            Remetente: c.Param("nomeusuario"),
+            Mensagem: c.Query("msg"),
+        }
+        infoMensagemEnviadaACanal.Tipo = "chat-nova-mensagem"
+        infoMensagemEnviadaACanal.Conteudo = conteudoMnesagemEnviadaACanal
         for _, clienteid := range sala.ClientesSala {
             canalSSECliente, existe := gerenciadorSSE.canais[clienteid]
             if !existe {
                 continue
             }
-            var infoMensagemEnviadaACanal InfoSSE
-            conteudoMnesagemEnviadaACanal := Conteudo {
-                Sala: c.Param("idsala"),
-                Remetente: c.Param("idusuario"),
-                Mensagem: c.Query("msg"),
-            }
-            infoMensagemEnviadaACanal.Tipo = "chat-nova-mensagem"
-            infoMensagemEnviadaACanal.Conteudo = conteudoMnesagemEnviadaACanal
             canalSSECliente.Canal <- infoMensagemEnviadaACanal
         }
         c.AbortWithStatus(201)
         return
     })
-    router.GET("/sse/:idusuario", func(c *gin.Context) {
-        _, existe := gerenciadorSSE.buscarCanal(c.Param("idusuario"))
+    router.GET("/sse/:nomeusuario", func(c *gin.Context) {
+        _, existe := gerenciadorSSE.buscarCanal(c.Param("nomeusuario"))
         if !existe {
-            canal, ok := gerenciadorSSE.criarCanal(c.Param("idusuario"))
+            canal, ok := gerenciadorSSE.criarCanal(c.Param("nomeusuario"))
             if !ok {
                 c.AbortWithStatus(500)
             }
             fmt.Println("Canal criado >> " + canal.Usuario)
         }
-        canal, _ := gerenciadorSSE.buscarCanal(c.Param("idusuario"))
+        canal, _ := gerenciadorSSE.buscarCanal(c.Param("nomeusuario"))
         c.Writer.Header().Set("Content-Type", "text/event-stream")
         c.Writer.Header().Set("Cache-Control", "no-cache")
         c.Writer.Header().Set("Connection", "keep-alive")
         go func() {
             <-c.Request.Context().Done()
-            gerenciadorSSE.removerCanal(c.Param("idusuario"))
+            gerenciadorSSE.removerCanal(c.Param("nomeusuario"))
         }()
         c.Stream(func(w io.Writer) bool {
-            canal = gerenciadorSSE.canais[c.Param("idusuario")]
+            canal = gerenciadorSSE.canais[c.Param("nomeusuario")]
             if msg, ok := <- canal.Canal; ok {
                 canal.gerenciarEventos(msg, c)
                 return true
@@ -228,10 +233,22 @@ func HandlerSSE(router *gin.Engine) {
         })
         return
     })
-    router.GET("/chat/:idusuario/view", func(c *gin.Context) {
+    router.GET("/chat/:nomeusuario/view", func(c *gin.Context) {
         c.HTML(200, "eventos.tmpl", gin.H{
             "title":"Eventos page",
-            "idusuario": c.Param("idusuario"),
+            "nomeusuario": c.Param("nomeusuario"),
+        })
+        return
+    })
+    router.GET("/chat/sala/:nomesala/usuarios", func(c *gin.Context) {
+        sala, existe := gerenciadorSalaChat.buscarSala(c.Param("nomesala"))
+        if !existe {
+            c.AbortWithStatus(404)
+            return
+        }
+        c.JSON(200, gin.H{
+            "status":"sucesso",
+            "clientes": sala.ClientesSala,
         })
         return
     })
