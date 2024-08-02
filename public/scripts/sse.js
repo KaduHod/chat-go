@@ -246,12 +246,12 @@ try {
             room = new Sala(sala)
             listaSalas.push(room)
         }
-        let usuario = listaUsuarios.find(user => user.nome === remetente)
+        let usuario = Usuario.busca(remetente)
         if(!usuario) {
             usuario = new Usuario(remetente)
             listaUsuarios.push(usuario)
         }
-        let salaUsuario = listaSalasUsuarios.find(su => su.iduser === usuario.id && su.idsala === room.id)
+        let salaUsuario = SalaUsuario.busca({iduser: usuario.id, idsala: room.id})
         if(!salaUsuario) {
             salaUsuario = new SalaUsuario(usuario.id, room.id)
             listaSalasUsuarios.push(salaUsuario)
@@ -301,7 +301,7 @@ try {
         if (!sala) {
             throw new Error("Sala nao encontrada!")
         }
-        const salaUsuario = SalaUsuario.busca({iduser: user.id, idsala: sala.id})
+        const salaUsuario = SalaUsuario.busca({iduser: user.id, idsala: room.id})
         if(!salaUsuario) {
             throw new Error("Usuario nao esta na sala para ser removido")
         }
