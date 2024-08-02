@@ -8,9 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-type EventStreamRequest struct {
-    Mensagem string `form:"mensagem" json:"mensagem" binding:"required,max=100"`
-}
 type Conteudo struct {
     Mensagem string `json:"mensagem"`
     Remetente string `json:"remetente"`
@@ -39,7 +36,9 @@ func (c *CanalSSE) gerenciarEventos(msg InfoSSE, ginCtx *gin.Context) {
         //c.log("Cliente enviou menagem ao chat")
         ginCtx.SSEvent(tipo, msg)
     case "painel":
-        c.log("Mensagem de painel")
+        //c.log("Mensagem de painel")
+        ginCtx.SSEvent(tipo, msg)
+    case "deixou-sala":
         ginCtx.SSEvent(tipo, msg)
     }
 }
@@ -82,11 +81,11 @@ func (g *GerenciadorCanaisSSE) criarCanal(id string) (*CanalSSE, bool) {
     return g.canais[id], false
 }
 // Buscando um usuario
-func (g *GerenciadorCanaisSSE) buscarCanal(id string) (*CanalSSE, bool) {
-    if canal, existe := g.canais[id]; !existe {
+func (g *GerenciadorCanaisSSE) buscarCanal(nomeCliente string) (*CanalSSE, bool) {
+    if canal, existe := g.canais[nomeCliente]; !existe {
         return canal, false
     }
-    return g.canais[id], true
+    return g.canais[nomeCliente], true
 }
 //removendo um usuario
 func (g *GerenciadorCanaisSSE) removerCanal(id string) error {
@@ -97,7 +96,7 @@ type Sala struct {
     Id string `json:"id"`
     ClientesSala []string `json:"clientes"`
 }
-func (s *Sala) jaEstaEmSala(id string) bool {
+func (s *Sala) estaEmSala(id string) bool {
     for _, idcliente := range s.ClientesSala {
         if idcliente == id {
             return true
@@ -105,13 +104,22 @@ func (s *Sala) jaEstaEmSala(id string) bool {
     }
     return false
 }
-func (scs *Sala) adicionarCliente(idcliente string) {
-    for _, v := range scs.ClientesSala {
+func (s *Sala) adicionarCliente(idcliente string) {
+    for _, v := range s.ClientesSala {
         if v == idcliente {
             return
         }
     }
-    scs.ClientesSala = append(scs.ClientesSala, idcliente)
+    s.ClientesSala = append(s.ClientesSala, idcliente)
+}
+func (s *Sala) removerCliente(nomecliente string) {
+    var novaLista []string
+    for _, v := range s.ClientesSala {
+        if v != nomecliente {
+            novaLista = append(novaLista, v)
+        }
+    }
+    s.ClientesSala = novaLista
 }
 type GerenciadorSalas struct {
     Salas map[string]*Sala `json:"salas"`
@@ -135,6 +143,11 @@ func (gsc *GerenciadorSalas) buscarSala(id string) (*Sala, bool) {
     var sala Sala
     return &sala, false
 }
+func (gs *GerenciadorSalas) removerSala(id string) {
+    if _, existe := gs.Salas[id]; existe {
+        delete(gs.Salas, id)
+    }
+}
 func HandlerSSE(router *gin.Engine) {
     gerenciadorCanais := GerenciadorCanaisSSE{
         canais: make(map[string]*CanalSSE),
@@ -152,7 +165,7 @@ func HandlerSSE(router *gin.Engine) {
             })
             return
         }
-        if sala.jaEstaEmSala(c.Param("nomeusuario")) {
+        if sala.estaEmSala(c.Param("nomeusuario")) {
             c.AbortWithStatus(200)
             return
         }
@@ -250,6 +263,41 @@ func HandlerSSE(router *gin.Engine) {
             "status":"sucesso",
             "clientes": sala.ClientesSala,
         })
+        return
+    })
+    router.GET("/chat/usuario/:nomeusuario/sala/:nomesala/sair", func(c *gin.Context) {
+        canal, existe := gerenciadorCanais.buscarCanal(c.Param("nomeusuario"))
+        if !existe {
+            c.AbortWithStatus(404)
+            return
+        }
+        sala, existe := gerenciadorSalas.buscarSala(c.Param("nomesala"))
+        if !existe {
+            c.AbortWithStatus(404)
+            return
+        }
+        if !sala.estaEmSala(canal.Usuario) {
+            c.AbortWithStatus(404)
+            return
+        }
+        sala.removerCliente(canal.Usuario)
+        if len(sala.ClientesSala) == 0 {
+            gerenciadorSalas.removerSala(sala.Id)
+        } else {
+            var infoDeixouSala InfoSSE
+            infoDeixouSala.Tipo = "deixou-sala"
+            var conteudoDeixouSala Conteudo
+            conteudoDeixouSala.Sala = sala.Id
+            conteudoDeixouSala.Remetente = canal.Usuario
+            infoDeixouSala.Conteudo = conteudoDeixouSala
+            for _, nomecliente := range sala.ClientesSala {
+                canalCliente, existe := gerenciadorCanais.buscarCanal(nomecliente)
+                if existe {
+                    canalCliente.Canal <- infoDeixouSala
+                }
+            }
+        }
+        c.AbortWithStatus(200)
         return
     })
 }

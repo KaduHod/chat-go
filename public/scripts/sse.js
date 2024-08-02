@@ -1,14 +1,14 @@
 const iduser = document.getElementById("nomeusuario").value;
-let SALA_SELECIONADA = false;
 const salaMenuLateralContainer = document.getElementById("chat-salas")
 const chatMensagensContainer = document.getElementById("chat-aberto-mensagens")
 const botaoEnviarMensagem = document.getElementById("enviar-msg-botao")
 const inputMensagem = document.getElementById("chat-text-input")
+const listaSalasUsuariosMensagens = [];
+let listaSalasUsuarios = [];
 const listaMensagens = [];
 const listaUsuarios = [];
 const listaSalas = [];
-const listaSalasUsuarios = [];
-const listaSalasUsuariosMensagens = [];
+let SALA_SELECIONADA = false;
 class Utils {
     static async entrarSala(e){
         const nomeSala = document.getElementById('entrar-sala-valor').value
@@ -213,6 +213,15 @@ class SalaUsuario {
             )
         return listaSalasUsuarios.find(funcaoFiltro)
     }
+    static remover({iduser, idsala}) {
+        const funcaoFiltro = !!iduser && !!idsala
+            ? (item) => item.iduser != iduser && item.idsala != idsala
+            : (!!iduser
+                ? (item) => item.iduser != iduser
+                : (item) => item.idsala != idsala
+            )
+        listaSalasUsuarios = listaSalasUsuarios.filter(funcaoFiltro)
+    }
 }
 class SalaUsuarioMensagem {
     constructor(idsala, idusuario, idmensagem) {
@@ -283,7 +292,20 @@ try {
         }
     })
     eventoSSE.addEventListener('deixou-sala', e => {
-        let {sala, remetente, mensagem} = JSON.parse(e.data).conteudo
+        let {sala, remetente} = JSON.parse(e.data).conteudo
+        const user = Usuario.busca(remetente)
+        if (!user) {
+            throw new Error("Usuario nao encontrado!")
+        }
+        const room = Sala.busca(sala)
+        if (!sala) {
+            throw new Error("Sala nao encontrada!")
+        }
+        const salaUsuario = SalaUsuario.busca({iduser: user.id, idsala: sala.id})
+        if(!salaUsuario) {
+            throw new Error("Usuario nao esta na sala para ser removido")
+        }
+        SalaUsuario.remover(salaUsuario)
         return
     })
     eventoSSE.addEventListener('usuario-offline', e => {
