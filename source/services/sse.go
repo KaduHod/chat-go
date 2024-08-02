@@ -60,17 +60,17 @@ func (c *CanalSSE) ping() {
         time.Sleep(5 * time.Second)
     }
 }
-type GerenciadorSSE struct {
+type GerenciadorCanaisSSE struct {
     canais map[string]*CanalSSE
 }
-func (g *GerenciadorSSE) log(msg string) {
+func (g *GerenciadorCanaisSSE) log(msg string) {
     dataAgora := utils.AgoraFormatado()
     fmt.Printf("[%s][SSE] >> %s\n", dataAgora, msg)
 }
 /*
 * Criando um canal de usuario
 */
-func (g *GerenciadorSSE) criarCanal(id string) (*CanalSSE, bool) {
+func (g *GerenciadorCanaisSSE) criarCanal(id string) (*CanalSSE, bool) {
     if _, ok := g.canais[id]; !ok {
         canal := CanalSSE{
             Usuario: id,
@@ -82,22 +82,22 @@ func (g *GerenciadorSSE) criarCanal(id string) (*CanalSSE, bool) {
     return g.canais[id], false
 }
 // Buscando um usuario
-func (g *GerenciadorSSE) buscarCanal(id string) (*CanalSSE, bool) {
+func (g *GerenciadorCanaisSSE) buscarCanal(id string) (*CanalSSE, bool) {
     if canal, existe := g.canais[id]; !existe {
         return canal, false
     }
     return g.canais[id], true
 }
 //removendo um usuario
-func (g *GerenciadorSSE) removerCanal(id string) error {
+func (g *GerenciadorCanaisSSE) removerCanal(id string) error {
     delete(g.canais, id)
     return nil
 }
-type SalaChatSSE struct {
+type Sala struct {
     Id string `json:"id"`
     ClientesSala []string `json:"clientes"`
 }
-func (s *SalaChatSSE) jaEstaEmSala(id string) bool {
+func (s *Sala) jaEstaEmSala(id string) bool {
     for _, idcliente := range s.ClientesSala {
         if idcliente == id {
             return true
@@ -105,7 +105,7 @@ func (s *SalaChatSSE) jaEstaEmSala(id string) bool {
     }
     return false
 }
-func (scs *SalaChatSSE) adicionarCliente(idcliente string) {
+func (scs *Sala) adicionarCliente(idcliente string) {
     for _, v := range scs.ClientesSala {
         if v == idcliente {
             return
@@ -113,38 +113,38 @@ func (scs *SalaChatSSE) adicionarCliente(idcliente string) {
     }
     scs.ClientesSala = append(scs.ClientesSala, idcliente)
 }
-type GerenciadorSalaChat struct {
-    Salas map[string]*SalaChatSSE `json:"salas"`
+type GerenciadorSalas struct {
+    Salas map[string]*Sala `json:"salas"`
 }
-func (gsc *GerenciadorSalaChat) criarSala(id string) *SalaChatSSE {
+func (gsc *GerenciadorSalas) criarSala(id string) *Sala {
     if _, existe := gsc.Salas[id]; existe {
         return gsc.Salas[id]
     }
     var clientes []string
-    sala := SalaChatSSE{
+    sala := Sala{
         Id: id,
         ClientesSala: clientes,
     }
     gsc.Salas[id] = &sala
     return &sala
 }
-func (gsc *GerenciadorSalaChat) buscarSala(id string) (*SalaChatSSE, bool) {
+func (gsc *GerenciadorSalas) buscarSala(id string) (*Sala, bool) {
     if sala, existe := gsc.Salas[id]; existe {
         return sala, true
     }
-    var sala SalaChatSSE
+    var sala Sala
     return &sala, false
 }
 func HandlerSSE(router *gin.Engine) {
-    gerenciadorSSE := GerenciadorSSE{
+    gerenciadorCanais := GerenciadorCanaisSSE{
         canais: make(map[string]*CanalSSE),
     }
-    gerenciadorSalaChat := GerenciadorSalaChat{
-        Salas: make(map[string]*SalaChatSSE),
+    gerenciadorSalas := GerenciadorSalas{
+        Salas: make(map[string]*Sala),
     }
     router.GET("/chat/sse/:nomeusuario/entrar/:nomesala", func(c *gin.Context) {
-        sala := gerenciadorSalaChat.criarSala(c.Param("nomesala"))
-        _, existe := gerenciadorSSE.canais[c.Param("nomeusuario")]
+        sala := gerenciadorSalas.criarSala(c.Param("nomesala"))
+        _, existe := gerenciadorCanais.canais[c.Param("nomeusuario")]
         if !existe {
             c.JSON(400, gin.H{
                 "status":"falha",
@@ -165,7 +165,7 @@ func HandlerSSE(router *gin.Engine) {
         infoEntrouEmSala.Tipo = "entrou-chat"
         infoEntrouEmSala.Conteudo = conteudoInfoEntrouEmSala
         for _, clienteid := range sala.ClientesSala {
-            canalSSE, existe := gerenciadorSSE.canais[clienteid]
+            canalSSE, existe := gerenciadorCanais.canais[clienteid]
             if existe {
                 canalSSE.Canal <- infoEntrouEmSala
             }
@@ -177,7 +177,7 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.POST("/chat/sse/:nomeusuario/sala/:nomesala/enviar", func(c *gin.Context) {
-        sala, existe := gerenciadorSalaChat.Salas[c.Param("nomesala")]
+        sala, existe := gerenciadorSalas.Salas[c.Param("nomesala")]
         if !existe {
             c.AbortWithStatus(404)
             return
@@ -197,7 +197,7 @@ func HandlerSSE(router *gin.Engine) {
         infoMensagemEnviadaACanal.Tipo = "chat-nova-mensagem"
         infoMensagemEnviadaACanal.Conteudo = conteudoMnesagemEnviadaACanal
         for _, clienteid := range sala.ClientesSala {
-            canalSSECliente, existe := gerenciadorSSE.canais[clienteid]
+            canalSSECliente, existe := gerenciadorCanais.canais[clienteid]
             if !existe {
                 continue
             }
@@ -207,24 +207,24 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.GET("/sse/:nomeusuario", func(c *gin.Context) {
-        _, existe := gerenciadorSSE.buscarCanal(c.Param("nomeusuario"))
+        _, existe := gerenciadorCanais.buscarCanal(c.Param("nomeusuario"))
         if !existe {
-            canal, ok := gerenciadorSSE.criarCanal(c.Param("nomeusuario"))
+            canal, ok := gerenciadorCanais.criarCanal(c.Param("nomeusuario"))
             if !ok {
                 c.AbortWithStatus(500)
             }
             fmt.Println("Canal criado >> " + canal.Usuario)
         }
-        canal, _ := gerenciadorSSE.buscarCanal(c.Param("nomeusuario"))
+        canal, _ := gerenciadorCanais.buscarCanal(c.Param("nomeusuario"))
         c.Writer.Header().Set("Content-Type", "text/event-stream")
         c.Writer.Header().Set("Cache-Control", "no-cache")
         c.Writer.Header().Set("Connection", "keep-alive")
         go func() {
             <-c.Request.Context().Done()
-            gerenciadorSSE.removerCanal(c.Param("nomeusuario"))
+            gerenciadorCanais.removerCanal(c.Param("nomeusuario"))
         }()
         c.Stream(func(w io.Writer) bool {
-            canal = gerenciadorSSE.canais[c.Param("nomeusuario")]
+            canal = gerenciadorCanais.canais[c.Param("nomeusuario")]
             if msg, ok := <- canal.Canal; ok {
                 canal.gerenciarEventos(msg, c)
                 return true
@@ -241,7 +241,7 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.GET("/chat/sala/:nomesala/usuarios", func(c *gin.Context) {
-        sala, existe := gerenciadorSalaChat.buscarSala(c.Param("nomesala"))
+        sala, existe := gerenciadorSalas.buscarSala(c.Param("nomesala"))
         if !existe {
             c.AbortWithStatus(404)
             return
