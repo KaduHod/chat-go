@@ -281,15 +281,16 @@ func HandlerSSE(router *gin.Engine) {
             return
         }
         sala.removerCliente(canal.Usuario)
+        var infoDeixouSala InfoSSE
+        infoDeixouSala.Tipo = "deixou-sala"
+        var conteudoDeixouSala Conteudo
+        conteudoDeixouSala.Sala = sala.Id
+        conteudoDeixouSala.Remetente = canal.Usuario
+        infoDeixouSala.Conteudo = conteudoDeixouSala
+        canal.Canal <- infoDeixouSala
         if len(sala.ClientesSala) == 0 {
             gerenciadorSalas.removerSala(sala.Id)
         } else {
-            var infoDeixouSala InfoSSE
-            infoDeixouSala.Tipo = "deixou-sala"
-            var conteudoDeixouSala Conteudo
-            conteudoDeixouSala.Sala = sala.Id
-            conteudoDeixouSala.Remetente = canal.Usuario
-            infoDeixouSala.Conteudo = conteudoDeixouSala
             for _, nomecliente := range sala.ClientesSala {
                 canalCliente, existe := gerenciadorCanais.buscarCanal(nomecliente)
                 if existe {

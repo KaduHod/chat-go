@@ -54,6 +54,13 @@ class Utils {
         containerMensagens.innerHTML = ""
         mensagens.forEach(msg => containerMensagens.appendChild(msg.montaElemento()))
     }
+    static removerMensagensChat() {
+        const containerMensagens = document.getElementById("chat-aberto-mensagens")
+        containerMensagens.innerHTML = ""
+    }
+    static removerNomeSalaTitulo() {
+        document.getElementById("titulo-janela-chat-aberta").innerText = "Seleciona uma sala para visualizar as mensagens!"
+    }
     static adicionaMensagemAoChat(mensagem) {
         const containerMensagens = document.getElementById("chat-aberto-mensagens")
         containerMensagens.appendChild(mensagem.montaElemento())
@@ -161,8 +168,20 @@ class Sala {
         const elementoHtml = document.createElement("div")
         elementoHtml.setAttribute("id", this.id)
         elementoHtml.classList.add("item-card", "rounded", "sala-menu-lateral")
-        elementoHtml.innerText = this.nome
-        elementoHtml.addEventListener("click", Utils.selecionarSala)
+        const elementoNomeSala = document.createElement("div")
+        elementoNomeSala.addEventListener("click", Utils.selecionarSala)
+        elementoNomeSala.innerText = this.nome
+        elementoNomeSala.classList.add("w-3/4", "flex", "items-center", "justify-center")
+        const elementoSairSala = document.createElement("div")
+        elementoSairSala.classList.add("flex", "w-1/4", "justify-center", "items-center")
+        const iconeSair = document.createElement("img")
+        iconeSair.setAttribute("src", "/public/sair.svg")
+        iconeSair.classList.add("cursor-pointer")
+        iconeSair.setAttribute("id", `sala__sair__${this.nome}`)
+        iconeSair.dataset.nomesala = this.nome
+        iconeSair.addEventListener("click", this.sair.bind(this))
+        elementoHtml.appendChild(elementoNomeSala)
+        elementoHtml.appendChild(iconeSair)
         return elementoHtml;
     }
     static busca(nome) {
@@ -191,11 +210,30 @@ class Sala {
         }
         return [...(await resposta.json()).clientes]
     }
+    async sair() {
+        const resposta = await fetch(`/chat/usuario/${Usuario.getNomeUsuarioLogado()}/sala/${this.nome}/sair`);
+        if (resposta.status != 200) {
+            const dado = await resposta.json()
+            throw new Error("Erro ao enviar requisicao de sair de sala", {dado})
+        }
+    }
+    static removerSalaMenuLateral(sala) {
+        salaMenuLateralContainer.removeChild(document.getElementById(sala.id))
+        if(SALA_SELECIONADA == sala.nome) {
+            Utils.removerMensagensChat()
+            Utils.removerNomeSalaTitulo()
+        }
+    }
     /*montaHtml(){
-        this.html = `<div
-            id="${this.id}"
-            class="item-card rounded"
-        >${this.nome}</div>`
+        *
+        this.html = `<div id="sala__1" class="item-card rounded flex">
+            <div class="w-3/4 flex items-center justify-center">
+            ${this.nome}
+            </div>
+            <div class="flex w-1/4 justify-center items-center">
+            <img src="/public/sair.svg" class="cursor-pointer">
+            </div>
+            </div>`
         return this.html
     }*/
 }
@@ -306,6 +344,7 @@ try {
             throw new Error("Usuario nao esta na sala para ser removido")
         }
         SalaUsuario.remover(salaUsuario)
+        Sala.removerSalaMenuLateral(room)
         return
     })
     eventoSSE.addEventListener('usuario-offline', e => {
