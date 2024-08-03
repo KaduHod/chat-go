@@ -53,6 +53,7 @@ class Utils {
         const containerMensagens = document.getElementById("chat-aberto-mensagens")
         containerMensagens.innerHTML = ""
         mensagens.forEach(msg => containerMensagens.appendChild(msg.montaElemento()))
+        botaoEnviarMensagem.addEventListener("click", Mensagem.enviarMensagem);
     }
     static removerMensagensChat() {
         const containerMensagens = document.getElementById("chat-aberto-mensagens")
@@ -273,7 +274,6 @@ class SalaUsuarioMensagem {
 }
 try {
     const eventoSSE = new EventSource(`/sse/${iduser}`);
-    botaoEnviarMensagem.addEventListener("click", Mensagem.enviarMensagem)
     eventoSSE.onerror = function(event) {
         console.error("Erro no SSE: ", event);
     };
@@ -349,7 +349,10 @@ try {
         SalaUsuario.removerPorId(salaUsuario.id)
         Sala.removerSalaMenuLateral(room)
         Sala.removerSalaDaLista(room)
-        if(room.nome == SALA_SELECIONADA) SALA_SELECIONADA = false
+        if(room.nome == SALA_SELECIONADA) {
+            SALA_SELECIONADA = false
+            botaoEnviarMensagem.removeEventListener("click");
+        }
         return
     })
     eventoSSE.addEventListener('usuario-offline', e => {
