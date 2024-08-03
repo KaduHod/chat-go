@@ -177,7 +177,7 @@ func HandlerSSE(router *gin.Engine) {
             sala = gerenciadorSalas.criarSala(c.Param("nomesala"))
         }
         if sala.estaEmSala(c.Param("nomeusuario")) {
-            c.AbortWithStatus(200)
+            c.AbortWithStatus(204)
             return
         }
         sala.adicionarCliente(c.Param("nomeusuario"))
@@ -195,13 +195,21 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.POST("/chat/sse/:nomeusuario/sala/:nomesala/enviar", func(c *gin.Context) {
+        _, existe := gerenciadorCanais.canais[c.Param("nomeusuario")]
+        if !existe {
+            c.JSON(400, gin.H{
+                "status":"falha",
+                "mensagem":"Cliente não tem conexao de sse aberta",
+            })
+            return
+        }
         sala, existe := gerenciadorSalas.Salas[c.Param("nomesala")]
         if !existe {
             c.AbortWithStatus(404)
             return
         }
         if len(c.Query("msg")) < 1 {
-            c.JSON(404, gin.H{
+            c.JSON(400, gin.H{
                 "status":"falha",
                 "mensagem":"Conteudo de mensagem deve conter um valor!",
             })
