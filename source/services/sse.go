@@ -13,15 +13,28 @@ type Conteudo struct {
     Remetente string `json:"remetente"`
     Sala string `json:"sala"`
 }
+func newConteudo(mensagem string, nomeusuario string, nomesala string) *Conteudo {
+    return &Conteudo{
+        Mensagem: mensagem,
+        Remetente: nomeusuario,
+        Sala: nomesala,
+    }
+}
 type InfoSSE struct {
     Tipo string `json:"tipo" binding:"required"`
-    Conteudo Conteudo `json:"conteudo" binding:"required"`
+    Conteudo *Conteudo `json:"conteudo" binding:"required"`
+}
+func newInfoSSE(tipo string,conteudo *Conteudo) *InfoSSE {
+    return &InfoSSE{
+        Conteudo: conteudo,
+        Tipo: tipo,
+    }
 }
 type CanalSSE struct {
     Usuario string `json:"usuario"`
-    Canal chan InfoSSE
+    Canal chan *InfoSSE
 }
-func (c *CanalSSE) gerenciarEventos(msg InfoSSE, ginCtx *gin.Context) {
+func (c *CanalSSE) gerenciarEventos(msg *InfoSSE, ginCtx *gin.Context) {
     switch tipo := msg.Tipo; tipo {
     case "ping":
         //c.log("Ping")
@@ -47,15 +60,9 @@ func (c *CanalSSE) log(msg string) {
     fmt.Printf("[%s][SSE] >> %s\n", dataAgora, msg)
 }
 func (c *CanalSSE) ping() {
+    info := newInfoSSE("ping", newConteudo("ping", "sistema", ""))
     for {
-        conteudo := Conteudo {
-            Mensagem: "ping",
-            Remetente: "Sistema",
-        }
-        c.Canal <- InfoSSE{
-            Tipo: "ping",
-            Conteudo: conteudo,
-        }
+        c.Canal <- info
         time.Sleep(5 * time.Second)
     }
 }
@@ -73,7 +80,7 @@ func (g *GerenciadorCanaisSSE) criarCanal(id string) (*CanalSSE, bool) {
     if _, ok := g.canais[id]; !ok {
         canal := CanalSSE{
             Usuario: id,
-            Canal: make(chan InfoSSE),
+            Canal: make(chan *InfoSSE),
         }
         g.canais[id] = &canal
         return g.canais[id], true
@@ -156,7 +163,6 @@ func HandlerSSE(router *gin.Engine) {
         Salas: make(map[string]*Sala),
     }
     router.GET("/chat/sse/:nomeusuario/entrar/:nomesala", func(c *gin.Context) {
-        sala := gerenciadorSalas.criarSala(c.Param("nomesala"))
         _, existe := gerenciadorCanais.canais[c.Param("nomeusuario")]
         if !existe {
             c.JSON(400, gin.H{
@@ -165,18 +171,17 @@ func HandlerSSE(router *gin.Engine) {
             })
             return
         }
+        var sala *Sala
+        sala, existe = gerenciadorSalas.buscarSala(c.Param(("nomesala")))
+        if !existe {
+            sala = gerenciadorSalas.criarSala(c.Param("nomesala"))
+        }
         if sala.estaEmSala(c.Param("nomeusuario")) {
             c.AbortWithStatus(200)
             return
         }
         sala.adicionarCliente(c.Param("nomeusuario"))
-        var infoEntrouEmSala InfoSSE
-        var conteudoInfoEntrouEmSala Conteudo
-        conteudoInfoEntrouEmSala.Sala = c.Param("nomesala")
-        conteudoInfoEntrouEmSala.Remetente = c.Param("nomeusuario")
-        conteudoInfoEntrouEmSala.Mensagem = c.Param("nomeusuario") + "entrou em uma sala"
-        infoEntrouEmSala.Tipo = "entrou-chat"
-        infoEntrouEmSala.Conteudo = conteudoInfoEntrouEmSala
+        infoEntrouEmSala := newInfoSSE("entrou-chat", newConteudo(c.Param("nomeusuario") + "entrou em uma sala", c.Param("nomeusuario"), c.Param("nomesala")))
         for _, clienteid := range sala.ClientesSala {
             canalSSE, existe := gerenciadorCanais.canais[clienteid]
             if existe {
@@ -201,20 +206,13 @@ func HandlerSSE(router *gin.Engine) {
                 "mensagem":"Conteudo de mensagem deve conter um valor!",
             })
         }
-        var infoMensagemEnviadaACanal InfoSSE
-        conteudoMnesagemEnviadaACanal := Conteudo {
-            Sala: c.Param("nomesala"),
-            Remetente: c.Param("nomeusuario"),
-            Mensagem: c.Query("msg"),
-        }
-        infoMensagemEnviadaACanal.Tipo = "chat-nova-mensagem"
-        infoMensagemEnviadaACanal.Conteudo = conteudoMnesagemEnviadaACanal
+        infoMensagemEnviadaCanal := newInfoSSE("chat-nova-mensagem", newConteudo(c.Query("msg"), c.Param("nomeusuario"), c.Param("nomesala")))
         for _, clienteid := range sala.ClientesSala {
             canalSSECliente, existe := gerenciadorCanais.canais[clienteid]
             if !existe {
                 continue
             }
-            canalSSECliente.Canal <- infoMensagemEnviadaACanal
+            canalSSECliente.Canal <- infoMensagemEnviadaCanal
         }
         c.AbortWithStatus(201)
         return
@@ -281,12 +279,7 @@ func HandlerSSE(router *gin.Engine) {
             return
         }
         sala.removerCliente(canal.Usuario)
-        var infoDeixouSala InfoSSE
-        infoDeixouSala.Tipo = "deixou-sala"
-        var conteudoDeixouSala Conteudo
-        conteudoDeixouSala.Sala = sala.Id
-        conteudoDeixouSala.Remetente = canal.Usuario
-        infoDeixouSala.Conteudo = conteudoDeixouSala
+        infoDeixouSala := newInfoSSE("deixou-sala", newConteudo("", c.Param("nomeusuario"), c.Param("nomesala")))
         canal.Canal <- infoDeixouSala
         if len(sala.ClientesSala) == 0 {
             gerenciadorSalas.removerSala(sala.Id)
