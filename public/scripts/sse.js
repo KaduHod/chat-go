@@ -3,11 +3,11 @@ const salaMenuLateralContainer = document.getElementById("chat-salas")
 const chatMensagensContainer = document.getElementById("chat-aberto-mensagens")
 const botaoEnviarMensagem = document.getElementById("enviar-msg-botao")
 const inputMensagem = document.getElementById("chat-text-input")
-const listaSalasUsuariosMensagens = [];
+let listaSalasUsuariosMensagens = [];
 let listaSalasUsuarios = [];
-const listaMensagens = [];
-const listaUsuarios = [];
-const listaSalas = [];
+let listaMensagens = [];
+let listaUsuarios = [];
+let listaSalas = [];
 let SALA_SELECIONADA = false;
 class Utils {
     static async entrarSala(e){
@@ -41,7 +41,7 @@ class Utils {
         return `${day}/${month} ${hours}:${minutes}`;
     }
     static selecionarSala(e) {
-        const room = Sala.buscaPorId(e.target.id)
+        const room = Sala.buscaPorId(e.target.dataset.idsala)
         if(!room) {
             throw new Error("Não foi possivel encontrar a sala")
         }
@@ -67,7 +67,6 @@ class Utils {
     }
 }
 document.getElementById("entrar-sala-botao").addEventListener("click", Utils.entrarSala)
-console.log(document.getElementById("entrar-sala-botao"))
 class Usuario {
     constructor(nome, id = null, cor = null) {
         this.id = id ?? "usuario__"+Utils.generateUniqueId()
@@ -112,7 +111,7 @@ class Mensagem {
     montaElemento() {
         const divPrincipal = document.createElement('div');
         divPrincipal.setAttribute('id', this.id);
-        divPrincipal.classList.add(this.alinhamento, 'flex', 'shadow-md', 'flex-col', 'rounded-md', 'p-2', 'max-w-fit', 'break-words', 'h-fit', 'bg-slate-200', 'my-1');
+        divPrincipal.classList.add(this.alinhamento, 'flex', 'shadow-md', 'flex-col', 'rounded-md', 'p-2', 'max-w-fit', 'break-words', 'h-fit', 'bg-slate-200', 'my-1', "animate-fade-in-move");
 
         // Cria o elemento <div> para a mensagem
         const messageContentDiv = document.createElement('div');
@@ -167,9 +166,10 @@ class Sala {
     }
     montaElemento() {
         const elementoHtml = document.createElement("div")
-        elementoHtml.setAttribute("id", this.id)
+        elementoHtml.setAttribute("id", `wrapper__${this.id}`)
         elementoHtml.classList.add("item-card", "rounded", "sala-menu-lateral", "animate-fade-in-move")
         const elementoNomeSala = document.createElement("div")
+        elementoNomeSala.dataset.idsala = this.id
         elementoNomeSala.addEventListener("click", Utils.selecionarSala)
         elementoNomeSala.innerText = this.nome
         elementoNomeSala.classList.add("w-3/4", "flex", "items-center", "justify-center")
@@ -203,6 +203,7 @@ class Sala {
         }
         const elementoHtml = sala.montaElemento()
         salaMenuLateralContainer.appendChild(elementoHtml)
+        document.getElementById("entrar-sala-valor").value = ""
     }
     static buscaSalaSelecionada() {
         return listaSalas.find(s => s.nome === SALA_SELECIONADA)
@@ -222,7 +223,7 @@ class Sala {
         }
     }
     static removerSalaMenuLateral(sala) {
-        salaMenuLateralContainer.removeChild(document.getElementById(sala.id))
+        salaMenuLateralContainer.removeChild(document.getElementById(`wrapper__${sala.id}`))
         if(SALA_SELECIONADA == sala.nome) {
             Utils.removerMensagensChat()
             Utils.removerNomeSalaTitulo()
@@ -243,10 +244,11 @@ class Sala {
 }
 class SalaUsuario {
     constructor(iduser, idsala) {
+        this.id = `salaUsuario__${Utils.generateUniqueId()}`
         this.iduser = iduser;
         this.idsala = idsala;
     }
-    static busca({iduser, idsala}) {
+    static busca({id ,iduser, idsala}) {
         const funcaoFiltro = !!iduser && !!idsala
             ? (item) => item.iduser == iduser && item.idsala == idsala
             : (!!iduser
@@ -255,14 +257,8 @@ class SalaUsuario {
             )
         return listaSalasUsuarios.find(funcaoFiltro)
     }
-    static remover({iduser, idsala}) {
-        const funcaoFiltro = !!iduser && !!idsala
-            ? (item) => item.iduser != iduser && item.idsala != idsala
-            : (!!iduser
-                ? (item) => item.iduser != iduser
-                : (item) => item.idsala != idsala
-            )
-        listaSalasUsuarios = listaSalasUsuarios.filter(funcaoFiltro)
+    static removerPorId(id) {
+        listaSalasUsuarios = listaSalasUsuarios.filter(s => s.id != id)
     }
 }
 class SalaUsuarioMensagem {
@@ -298,20 +294,23 @@ try {
             salaUsuario = new SalaUsuario(usuario.id, room.id)
             listaSalasUsuarios.push(salaUsuario)
         }
-        const usuariosJaLogadosEmSala = await room.buscarUsuariosServidor()
-        usuariosJaLogadosEmSala.forEach(nomeUsuario => {
-            let usuario = Usuario.busca(nomeUsuario)
-            if(!usuario) {
-                usuario = new Usuario(nomeUsuario)
-                listaUsuarios.push(usuario)
+        if (remetente === Usuario.getNomeUsuarioLogado()) {
+            // Busca usuarios ja logados na sala
+            const usuariosJaLogadosEmSala = await room.buscarUsuariosServidor()
+            usuariosJaLogadosEmSala.forEach(nomeUsuario => {
+                let usuario = Usuario.busca(nomeUsuario)
+                if(!usuario) {
+                    usuario = new Usuario(nomeUsuario)
+                    listaUsuarios.push(usuario)
+                }
+                let salaUsuario = SalaUsuario.busca({iduser: usuario.id})
+                if(!salaUsuario) {
+                    listaSalasUsuarios.push(new SalaUsuario(usuario.id, sala.id))
+                }
+            })
+            if(!Sala.salasMenuLateral().includes(room.id)) {
+                Sala.adicionaSalaAMenuLateral(room)
             }
-            let salaUsuario = SalaUsuario.busca({iduser: usuario.id})
-            if(!salaUsuario) {
-                listaSalasUsuarios.push(new SalaUsuario(usuario.id, sala.id))
-            }
-        })
-        if(remetente == Usuario.getNomeUsuarioLogado() && !Sala.salasMenuLateral().includes(room.id)) {
-            Sala.adicionaSalaAMenuLateral(room)
         }
     })
     eventoSSE.addEventListener('chat-nova-mensagem', e => {
@@ -347,7 +346,7 @@ try {
         if(!salaUsuario) {
             throw new Error("Usuario nao esta na sala para ser removido")
         }
-        SalaUsuario.remover(salaUsuario)
+        SalaUsuario.removerPorId(salaUsuario.id)
         Sala.removerSalaMenuLateral(room)
         Sala.removerSalaDaLista(room)
         SALA_SELECIONADA = false
