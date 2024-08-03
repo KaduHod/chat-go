@@ -349,7 +349,7 @@ try {
         SalaUsuario.removerPorId(salaUsuario.id)
         Sala.removerSalaMenuLateral(room)
         Sala.removerSalaDaLista(room)
-        SALA_SELECIONADA = false
+        if(room.nome == SALA_SELECIONADA) SALA_SELECIONADA = false
         return
     })
     eventoSSE.addEventListener('usuario-offline', e => {
