@@ -190,6 +190,9 @@ class Sala {
     static buscaPorId(id) {
         return listaSalas.find(s => s.id === id)
     }
+    static removerSalaDaLista(sala) {
+        listaSalas = listaSalas.filter(s => s.nome !== sala.nome)
+    }
     static salasMenuLateral() {
         return [...document.getElementsByClassName("sala-menu-lateral")].map(div => div.id)
     }
@@ -345,6 +348,8 @@ try {
         }
         SalaUsuario.remover(salaUsuario)
         Sala.removerSalaMenuLateral(room)
+        Sala.removerSalaDaLista(room)
+        SALA_SELECIONADA = false
         return
     })
     eventoSSE.addEventListener('usuario-offline', e => {
