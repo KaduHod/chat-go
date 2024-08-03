@@ -67,6 +67,7 @@ class Utils {
     }
 }
 document.getElementById("entrar-sala-botao").addEventListener("click", Utils.entrarSala)
+console.log(document.getElementById("entrar-sala-botao"))
 class Usuario {
     constructor(nome, id = null, cor = null) {
         this.id = id ?? "usuario__"+Utils.generateUniqueId()
@@ -167,7 +168,7 @@ class Sala {
     montaElemento() {
         const elementoHtml = document.createElement("div")
         elementoHtml.setAttribute("id", this.id)
-        elementoHtml.classList.add("item-card", "rounded", "sala-menu-lateral")
+        elementoHtml.classList.add("item-card", "rounded", "sala-menu-lateral", "animate-fade-in-move")
         const elementoNomeSala = document.createElement("div")
         elementoNomeSala.addEventListener("click", Utils.selecionarSala)
         elementoNomeSala.innerText = this.nome
