@@ -125,32 +125,6 @@ LOCK TABLES `conexao` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `sala`
---
-
-DROP TABLE IF EXISTS `sala`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `sala` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `nome` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `nome` (`nome`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `sala`
---
-
-LOCK TABLES `sala` WRITE;
-/*!40000 ALTER TABLE `sala` DISABLE KEYS */;
-/*!40000 ALTER TABLE `sala` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `usuario`
 --
 
@@ -240,38 +214,6 @@ LOCK TABLES `usuarioconexao` WRITE;
 /*!40000 ALTER TABLE `usuarioconexao` DISABLE KEYS */;
 /*!40000 ALTER TABLE `usuarioconexao` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `usuariosala`
---
-
-DROP TABLE IF EXISTS `usuariosala`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `usuariosala` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `idusuario` int NOT NULL,
-  `idsala` int NOT NULL,
-  `datacriacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `dataatualizacao` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `online` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `idusuario_2` (`idusuario`,`idsala`),
-  KEY `idsala` (`idsala`),
-  KEY `idusuario` (`idusuario`),
-  CONSTRAINT `usuariosala_ibfk_1` FOREIGN KEY (`idsala`) REFERENCES `sala` (`id`),
-  CONSTRAINT `usuariosala_ibfk_2` FOREIGN KEY (`idusuario`) REFERENCES `usuario` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `usuariosala`
---
-
-LOCK TABLES `usuariosala` WRITE;
-/*!40000 ALTER TABLE `usuariosala` DISABLE KEYS */;
-/*!40000 ALTER TABLE `usuariosala` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -282,4 +224,5 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-03 17:26:01
+-- Dump completed on 2024-07-21  1:53:57
+
