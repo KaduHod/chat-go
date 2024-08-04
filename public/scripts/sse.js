@@ -54,6 +54,8 @@ class Utils {
         containerMensagens.innerHTML = ""
         mensagens.forEach(msg => containerMensagens.appendChild(msg.montaElemento()))
         botaoEnviarMensagem.addEventListener("click", Mensagem.enviarMensagem);
+        document.getElementById('menu-hamburguer').click()
+        console.log("AQuiii")
     }
     static removerMensagensChat() {
         const containerMensagens = document.getElementById("chat-aberto-mensagens")
@@ -153,6 +155,7 @@ class Mensagem {
         }
         const usuario = Usuario.busca(Usuario.getNomeUsuarioLogado())
         const conteudoMensagem = inputMensagem.value
+        inputMensagem.value = "";
         const resposta = await fetch(`/chat/sse/${usuario.nome}/sala/${sala.nome}/enviar?msg=${conteudoMensagem}`, {method:"POST"})
         if (resposta.status != 201) {
             const erroRequest = await resposta.json();
@@ -173,7 +176,7 @@ class Sala {
         elementoNomeSala.dataset.idsala = this.id
         elementoNomeSala.addEventListener("click", Utils.selecionarSala)
         elementoNomeSala.innerText = this.nome
-        elementoNomeSala.classList.add("w-3/4", "flex", "items-center", "justify-center")
+        elementoNomeSala.classList.add("w-3/4","cursor-pointer", "flex", "items-center", "justify-center")
         const elementoSairSala = document.createElement("div")
         elementoSairSala.classList.add("flex", "w-1/4", "justify-center", "items-center")
         const iconeSair = document.createElement("img")
@@ -304,6 +307,7 @@ const main = async () => {
         console.error("Erro no SSE: ", event);
     };
     eventoSSE.addEventListener('entrou-chat', async e => {
+        console.log(e, "Evento entrar em sala")
         const {sala, remetente} = JSON.parse(e.data).conteudo
         let room = Sala.busca(sala)
         if (!room) {
@@ -321,7 +325,6 @@ const main = async () => {
             listaSalasUsuarios.push(salaUsuario)
         }
         if (remetente === Usuario.getNomeUsuarioLogado()) {
-            console.log("Aqui")
             // Busca usuarios ja logados na sala
             const usuariosJaLogadosEmSala = await room.buscarUsuariosServidor()
             usuariosJaLogadosEmSala.forEach(nomeUsuario => {
@@ -345,6 +348,7 @@ const main = async () => {
         }
     })
     eventoSSE.addEventListener('chat-nova-mensagem', e => {
+        console.log(e, "evento nova mensagem")
         e.data = JSON.parse(e.data)
         let {sala, remetente, mensagem} = JSON.parse(e.data).conteudo
         const user = Usuario.busca(remetente)
@@ -361,9 +365,11 @@ const main = async () => {
         listaSalasUsuariosMensagens.push(salaUsuarioMensagem)
         if(SALA_SELECIONADA === room.nome) {
             Utils.adicionaMensagemAoChat(message)
+            chatMensagensContainer.scrollTop = chatMensagensContainer.scrollHeight
         }
     })
     eventoSSE.addEventListener('deixou-sala', e => {
+        console.log(e, "Evento deixou sala")
         let {sala, remetente} = JSON.parse(e.data).conteudo
         const user = Usuario.busca(remetente)
         if (!user) {
@@ -387,6 +393,7 @@ const main = async () => {
         return
     })
     eventoSSE.addEventListener('usuario-offline', e => {
+        console.log(e, "Evento usuario offline")
         let {sala, remetente, mensagem} = JSON.parse(e.data).conteudo
         return
     })
