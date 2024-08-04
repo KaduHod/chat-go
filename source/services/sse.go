@@ -308,6 +308,9 @@ type SalaComUsuariosApi struct {
     Nome string `json:"nome"`
     Usuarios []string `json:"usuarios"`
 }
+type LoginInput struct {
+    Apelido string `json:"apelido" form:"apelido" bind:"required"`
+}
 func HandlerSSE(router *gin.Engine) {
     gerenciadorCanaisSSE := GerenciadorCanaisSSE{
         canais: make(map[string]*CanalSSE),
@@ -526,6 +529,29 @@ func HandlerSSE(router *gin.Engine) {
         })
         return
     })
+    router.GET("/chat/usuario/login", func (c *gin.Context) {
+        c.HTML(200, "login.tmpl", gin.H{})
+        return
+    })
+    router.POST("/chat/usuario/login", func (c *gin.Context) {
+        var loginInput LoginInput
+        if err := c.ShouldBind(&loginInput); err != nil {
+            c.AbortWithStatus(404)
+            return
+        }
+        gerenciadorBd := newGerenciadorSalaBd()
+        var usuarioBd UsuarioBD
+        if err := gerenciadorBd.buscarUsuario(loginInput.Apelido, &usuarioBd); err != nil {
+            if err == sql.ErrNoRows {
+                c.AbortWithStatus(404)
+                return
+            }
+            c.AbortWithStatus(500)
+            return
+        }
+        c.Redirect(302, fmt.Sprintf("/chat/%s/view", usuarioBd.Apelido))
+        return
+    })
     router.GET("/chat/usuario/cadastrar", func(c *gin.Context) {
         c.HTML(200, "cadastrar.tmpl", gin.H{})
         return
@@ -593,20 +619,25 @@ func HandlerSSE(router *gin.Engine) {
     router.GET("/chat/usuario/:apelidousuario/sala/:nomesala/sair", func(c *gin.Context) {
         canal, existe := gerenciadorCanaisSSE.buscarCanal(c.Param("apelidousuario"))
         if !existe {
+            fmt.Println("nao achou canal")
             c.AbortWithStatus(404)
             return
         }
+        infoDeixouSala := newInfoSSE("deixou-sala", newConteudo("", c.Param("apelidousuario"), c.Param("nomesala")))
         sala, existe := gerenciadorSalasSSE.buscarSala(c.Param("nomesala"))
         if !existe {
-            c.AbortWithStatus(404)
+            canal.Canal <- infoDeixouSala
+            fmt.Println("nao achou sala")
+            c.AbortWithStatus(200)
             return
         }
         if !sala.estaEmSala(canal.UsuarioBd.Apelido) {
+            fmt.Println("Usuario nao esta na sala")
+            canal.Canal <- infoDeixouSala
             c.AbortWithStatus(404)
             return
         }
         sala.removerCliente(canal.UsuarioBd.Apelido)
-        infoDeixouSala := newInfoSSE("deixou-sala", newConteudo("", c.Param("apelidousuario"), c.Param("nomesala")))
         canal.Canal <- infoDeixouSala
         if len(sala.ClientesSala) == 0 {
             gerenciadorSalasSSE.removerSala(sala.NomeSala)

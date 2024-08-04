@@ -320,6 +320,7 @@ const main = async () => {
             listaSalasUsuarios.push(salaUsuario)
         }
         if (remetente === Usuario.getNomeUsuarioLogado()) {
+            console.log("Aqui")
             // Busca usuarios ja logados na sala
             const usuariosJaLogadosEmSala = await room.buscarUsuariosServidor()
             usuariosJaLogadosEmSala.forEach(nomeUsuario => {
@@ -333,8 +334,12 @@ const main = async () => {
                     listaSalasUsuarios.push(new SalaUsuario(usuario.id, sala.id))
                 }
             })
-            if(!Sala.salasMenuLateral().includes(room.id)) {
+            if(!Sala.salasMenuLateral().includes(`wrapper__${room.id}`)) {
                 Sala.adicionaSalaAMenuLateral(room)
+            }
+            if(!SALA_SELECIONADA) {
+                SALA_SELECIONADA = room.nome
+                botaoEnviarMensagem.addEventListener("click", Mensagem.enviarMensagem)
             }
         }
     })

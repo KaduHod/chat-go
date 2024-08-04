@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title></title>
+        <link href="css/style.css" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="/public/styles/tailwind.css">
+    </head>
+    <body>
+        <div class="flex w-screen h-screen items-center justify-center">
+            <form id="cadastrar-container" class="w-full max-w-md p-6 bg-white border-2 border-gray-500 rounded" action="/chat/usuario/login" method="post">
+                <h1 class="text-center text-2xl mb-4">Cadastrar</h1>
+                <input class="w-full mb-4 p-2 shadow-md border-gray-400 border-2 rounded" type="text" placeholder="Digite o seu apelido" name="apelido" value="">
+                <input class="w-full p-2 shadow-md border-gray-400 border-2 rounded bg-blue-500 text-white cursor-pointer" type="submit" name="enviar" value="Login">
+                <a class="w-full p-2 shadow-md border-gray-400 border-2 rounded bg-blue-500 text-white cursor-pointer w-full mt-2" href="/chat/usuario/cadastrar">Cadastro</a>
+            </form>
+        </div>
+    </body>
+</html>
