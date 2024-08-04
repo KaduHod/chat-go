@@ -401,10 +401,12 @@ func HandlerSSE(router *gin.Engine) {
                 "status":"falha",
                 "mensagem": "Usuario nao encontrado",
             })
+            fmt.Println("Usuario nao encontrado")
             return
         }
         _, existe := gerenciadorCanaisSSE.canais[usuarioBd.Apelido]
         if !existe {
+            fmt.Println("Cliente não tem conexao de sse aberta")
             c.JSON(400, gin.H{
                 "status":"falha",
                 "mensagem":"Cliente não tem conexao de sse aberta",

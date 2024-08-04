@@ -283,25 +283,25 @@ const main = async () => {
     const usuarioLogado = new Usuario(iduser)
     listaUsuarios.push(usuarioLogado)
     const dado = await respostaSalasUsuario.json()
-    console.log(dado)
-    if(!dado.salas) return
-    const salas = [...dado.salas]
-    salas.forEach(sala => {
-        const room = new Sala(sala.nome)
-        listaSalas.push(room)
-        const salaUsuarioLogado = new SalaUsuario(usuarioLogado.id, room.id)
-        listaSalasUsuarios.push(salaUsuarioLogado)
-        if(!sala.usuarios) return;
-        sala.usuarios.forEach(apelido => {
-            if(apelido != usuarioLogado.nome) {
-                const user = new Usuario(apelido)
-                listaUsuarios.push(user)
-                const salaUser = new SalaUsuario(user.id, room.id)
-                listaSalasUsuarios.push(salaUser)
-            }
+    if(dado.salas && dado.salas.length > 0) {
+        const salas = [...dado.salas]
+        salas.forEach(sala => {
+            const room = new Sala(sala.nome)
+            listaSalas.push(room)
+            const salaUsuarioLogado = new SalaUsuario(usuarioLogado.id, room.id)
+            listaSalasUsuarios.push(salaUsuarioLogado)
+            if(!sala.usuarios) return;
+            sala.usuarios.forEach(apelido => {
+                if(apelido != usuarioLogado.nome) {
+                    const user = new Usuario(apelido)
+                    listaUsuarios.push(user)
+                    const salaUser = new SalaUsuario(user.id, room.id)
+                    listaSalasUsuarios.push(salaUser)
+                }
+            })
+            Sala.adicionaSalaAMenuLateral(room)
         })
-        Sala.adicionaSalaAMenuLateral(room)
-    })
+    }
     const eventoSSE = new EventSource(`/sse/${iduser}`);
     eventoSSE.onerror = function(event) {
         console.error("Erro no SSE: ", event);
