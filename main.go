@@ -2,7 +2,6 @@ package main
 
 import (
 	"chat/source/routes"
-	"chat/source/services"
 	"chat/source/utils"
 	"fmt"
 
@@ -54,8 +53,8 @@ func CORSMiddleware() gin.HandlerFunc {
     }
 }
 func main() {
-    services.VerificaCanaisAoIniciarServidor()
-    services.VerificaClientesEmCanaisAoIniciarServidor()
+//    services.VerificaCanaisAoIniciarServidor()
+  //  services.VerificaClientesEmCanaisAoIniciarServidor()
 	app := gin.Default()
 	app.Use(Logger())
     app.Use(CORSMiddleware())

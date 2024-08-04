@@ -103,6 +103,7 @@ func (g *GerenciadorCanaisSSE) buscarCanal(nomeCliente string) (*CanalSSE, bool)
 }
 //removendo um usuario
 func (g *GerenciadorCanaisSSE) removerCanal(id string) error {
+    close(g.canais[id].Canal)
     delete(g.canais, id)
     return nil
 }
@@ -477,6 +478,7 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.POST("/chat/sse/:apelidousuario/sala/:nomesala/enviar", func(c *gin.Context) {
+        fmt.Println("Usuario pediu pra enviar mensagem", c.Param("apelidousuario"), c.Param("nomesala"))
         _, existe := gerenciadorCanaisSSE.canais[c.Param("apelidousuario")]
         if !existe {
             c.JSON(400, gin.H{
@@ -489,13 +491,13 @@ func HandlerSSE(router *gin.Engine) {
         gerenciadorDb := newGerenciadorSalaBd()
         if err := gerenciadorDb.buscarSala(c.Param("nomesala"), &salaBd); err != nil {
             if err == sql.ErrNoRows {
+                fmt.Println("Servidor nao encontrou a sala")
                 c.AbortWithStatus(404)
                 return
             }
             c.AbortWithStatus(500)
             return
         }
-        fmt.Println(salaBd)
         if !salaBd.Ativo {
             fmt.Println("Sala nao esta ativa")
             c.JSON(400, gin.H{
@@ -507,6 +509,7 @@ func HandlerSSE(router *gin.Engine) {
         var usuarioBd UsuarioBD
         if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuarioBd); err != nil {
              if err == sql.ErrNoRows {
+                fmt.Println("Servidor nao encontrou usuario no banco", c.Param("apelidousuario"))
                 c.AbortWithStatus(404)
                 return
             }
@@ -554,11 +557,11 @@ func HandlerSSE(router *gin.Engine) {
     })
     router.GET("/sse/:apelidousuario", func(c *gin.Context) {
         //buscar usuario em banco
+        fmt.Println(c.Param("apelidousuario"), "Pediu pra abrir conexao")
         canal, existe := gerenciadorCanaisSSE.buscarCanal(c.Param("apelidousuario"))
         if existe {
             info := newInfoSSE("shutdown-sse", newConteudo("Printar aviso para utilizar chat em apenas uma aba", c.Param("apelidousuario"),""))
             canal.Canal <- info
-            gerenciadorCanaisSSE.removerCanal(c.Param("apelidousuario"))
             // limite de um chat aberto por usuario
             /*c.JSON(400, gin.H{
                 "status":"falha",
@@ -573,6 +576,7 @@ func HandlerSSE(router *gin.Engine) {
         var usuarioBd UsuarioBD
         if err := linha.Scan(&usuarioBd.Id, &usuarioBd.Nome, &usuarioBd.Apelido); err != nil {
             if err.Error() == sql.ErrNoRows.Error() {
+                fmt.Println("Erro ao buscar usuario no banco", c.Param("apelidousuario"))
                 c.AbortWithStatus(404)
                 return
             }
