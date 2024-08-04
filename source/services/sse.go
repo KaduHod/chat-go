@@ -495,7 +495,7 @@ func HandlerSSE(router *gin.Engine) {
         }
         fmt.Println(salaBd)
         if !salaBd.Ativo {
-            fmt.Println("SalA nao esta ativa")
+            fmt.Println("Sala nao esta ativa")
             c.JSON(400, gin.H{
                 "status":"falha",
                 "mensagem":"nao é permitido enviar mensagens a salas nao ativas",
@@ -543,6 +543,7 @@ func HandlerSSE(router *gin.Engine) {
                 "status":"falha",
                 "mensagem":"Conteudo de mensagem deve conter um valor!",
             })
+            return
         }
         infoMensagemEnviadaCanal := newInfoSSE("chat-nova-mensagem", newConteudo(c.Query("msg"), usuarioBd.Apelido, salaBd.Nome))
         go sala.transmitir(infoMensagemEnviadaCanal, &gerenciadorCanaisSSE)

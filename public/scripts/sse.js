@@ -284,6 +284,7 @@ const main = async () => {
     listaUsuarios.push(usuarioLogado)
     const dado = await respostaSalasUsuario.json()
     console.log(dado)
+    if(!dado.salas) return
     const salas = [...dado.salas]
     salas.forEach(sala => {
         const room = new Sala(sala.nome)
