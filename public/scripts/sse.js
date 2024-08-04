@@ -288,6 +288,7 @@ const main = async () => {
         listaSalas.push(room)
         const salaUsuarioLogado = new SalaUsuario(usuarioLogado.id, room.id)
         listaSalasUsuarios.push(salaUsuarioLogado)
+        if(!sala.usuarios) return;
         sala.usuarios.forEach(apelido => {
             if(apelido != usuarioLogado.nome) {
                 const user = new Usuario(apelido)
@@ -369,7 +370,7 @@ const main = async () => {
             throw new Error("Usuario nao encontrado!")
         }
         const room = Sala.busca(sala)
-        if (!sala) {
+        if (!room) {
             throw new Error("Sala nao encontrada!")
         }
         const salaUsuario = SalaUsuario.busca({iduser: user.id, idsala: room.id})

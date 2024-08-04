@@ -109,6 +109,7 @@ func (g *GerenciadorCanaisSSE) removerCanal(id string) error {
 type SalaBD struct {
     Id int64 `json:"id"`
     Nome string `json:"nome"`
+    Ativo bool `json:"ativo"`
 }
 type GerenciadorSalaBd struct {
     banco *database.Db
@@ -134,15 +135,20 @@ func (sdb *GerenciadorSalaBd) criarSala(saladest *SalaBD) error {
     return nil
 }
 func (sdb *GerenciadorSalaBd) removerSala(sala *SalaBD) error {
+    updateQuery := fmt.Sprintf("UPDATE sala SET ativo = 0 WHERE id = %d", sala.Id)
+    _, err := sdb.banco.ExecAndLog(updateQuery)
+    if err != nil {
+       return err
+    }
     return nil
 }
 func (sdb *GerenciadorSalaBd) buscarSala(nomesala string ,saladest *SalaBD) error {
-    query := fmt.Sprintf("SELECT id, nome FROM sala WHERE nome = '%s' LIMIT 1", nomesala)
+    query := fmt.Sprintf("SELECT id, nome, ativo FROM sala WHERE nome = '%s' LIMIT 1", nomesala)
     linha := sdb.banco.QueryRowAndLog(query)
     if linha.Err() != nil {
         return linha.Err()
     }
-    if err := linha.Scan(&saladest.Id, &saladest.Nome); err != nil {
+    if err := linha.Scan(&saladest.Id, &saladest.Nome, &saladest.Ativo); err != nil {
         return err
     }
     return nil
@@ -163,19 +169,39 @@ func (sdb *GerenciadorSalaBd) adicionarUsuarioSala(usuarioSala *UsuarioSalaBD) e
     return nil
 }
 func (sdb *GerenciadorSalaBd) removerUsuarioSala(sala *SalaBD, usuario *UsuarioBD) error {
+    updateQuery := fmt.Sprintf("UPDATE usuariosala SET ativo = 0 WHERE idsala = %d AND idusuario = %d", sala.Id, usuario.Id)
+    _, err := sdb.banco.ExecAndLog(updateQuery)
+    if err != nil {
+       return err
+    }
     return nil
 }
 func (sdb *GerenciadorSalaBd) buscarUsuarioSala(idsala int64, idusuario int64, destSalaUsusario *UsuarioSalaBD) error {
-    query := fmt.Sprintf("SELECT id ,idsala, idusuario FROM usuariosala WHERE idsala = %d AND idusuario = %d", idsala, idusuario)
+    query := fmt.Sprintf("SELECT id ,idsala, idusuario, ativo FROM usuariosala WHERE idsala = %d AND idusuario = %d", idsala, idusuario)
     linha := sdb.banco.QueryRowAndLog(query)
     if linha.Err() != nil {
         return linha.Err()
     }
-    if err := linha.Scan(&destSalaUsusario.Id, &destSalaUsusario.IdSala, &destSalaUsusario.IdUsuario); err != nil{
+    if err := linha.Scan(&destSalaUsusario.Id, &destSalaUsusario.IdSala, &destSalaUsusario.IdUsuario, &destSalaUsusario.Ativo); err != nil{
         return err
     }
     return nil
 }
+func (sdb *GerenciadorSalaBd) ativarUsuarioSala(idUsuarioSala int64) error {
+    updateQuery := fmt.Sprintf("UPDATE usuariosala SET ativo = 1 WHERE id = %d", idUsuarioSala)
+    _, err := sdb.banco.ExecAndLog(updateQuery)
+    if err != nil {
+       return err
+    }
+    return nil
+}
+func (sdb *GerenciadorSalaBd) ativarSala(idsala int64) error {
+    updateQuery := fmt.Sprintf("UPDATE sala SET ativo = 1 WHERE id = %d", idsala)
+    _, err := sdb.banco.ExecAndLog(updateQuery)
+    if err != nil {
+       return err
+    }
+    return nil}
 func (sdb *GerenciadorSalaBd) buscarUsuario(apelidousuario string ,usuariodest *UsuarioBD) error {
     query := fmt.Sprintf("SELECT id, nome, apelido FROM usuario WHERE apelido = '%s'", apelidousuario)
     linha := sdb.banco.QueryRowAndLog(query)
@@ -219,12 +245,11 @@ func (sdb *GerenciadorSalaBd) buscarSalasDeUsuario(idUsuario int64) ([]SalaBD ,e
         }
         salas = append(salas, sala)
     }
-    fmt.Println(salas, " salas")
     return salas, nil
 }
 func (sdb *GerenciadorSalaBd) buscarUsuariosDeSala(idSala int64) ([]string ,error) {
     var apelidos []string
-    query := fmt.Sprintf("SELECT u.apelido FROM usuario u INNER JOIN usuariosala us on us.idusuario = u.id INNER JOIN sala s on s.id = us.idsala WHERE s.id = %d", idSala)
+    query := fmt.Sprintf("SELECT u.apelido FROM usuario u INNER JOIN usuariosala us on us.idusuario = u.id INNER JOIN sala s on s.id = us.idsala WHERE s.id = %d AND us.ativo = 1", idSala)
     linhas, err := sdb.banco.QueryAndLog(query)
     if err != nil {
         if err == sql.ErrNoRows {
@@ -239,13 +264,13 @@ func (sdb *GerenciadorSalaBd) buscarUsuariosDeSala(idSala int64) ([]string ,erro
         }
         apelidos = append(apelidos, apelido)
     }
-    fmt.Println("Apelidos 1", apelidos)
     return apelidos, nil
 }
 type UsuarioSalaBD struct {
     Id int64
     IdUsuario int64
     IdSala int64
+    Ativo bool
 }
 type Sala struct {
     NomeSala string `json:"nomesala"`
@@ -345,7 +370,6 @@ func HandlerSSE(router *gin.Engine) {
         }
         for _, sala := range salas {
             apelidos, err := gerencidorDb.buscarUsuariosDeSala(sala.Id)
-            fmt.Println(apelidos, "APELIDOS 2", sala.Id, err)
             if err != nil {
                 c.AbortWithStatus(500)
                 return
@@ -395,7 +419,15 @@ func HandlerSSE(router *gin.Engine) {
                     return
                 }
             } else {
+                fmt.Println("Erro ao buscar sala", err)
                 gerenciadorSalasSSE.removerSala(sala.NomeSala)
+                c.AbortWithStatus(500)
+                return
+            }
+        }
+        if !salabd.Ativo {
+            if err := gerenciadorSalaBd.ativarSala(salabd.Id); err != nil {
+                fmt.Println("Erro ao ativar sala")
                 c.AbortWithStatus(500)
                 return
             }
@@ -408,17 +440,26 @@ func HandlerSSE(router *gin.Engine) {
             IdSala: salabd.Id,
             IdUsuario: usuarioBd.Id,
         }
-        if err := gerenciadorSalaBd.adicionarUsuarioSala(&usuarioSala); err != nil {
-            if !gerenciadorSalaBd.banco.ErroDeRegistroDuplicado(err) {
-                fmt.Println("Erro ao criar registro de usuarioSala no banco")
+        err := gerenciadorSalaBd.buscarUsuarioSala(usuarioSala.IdSala, usuarioSala.IdUsuario, &usuarioSala)
+        if err == sql.ErrNoRows {
+            if err == sql.ErrNoRows {
+                if err := gerenciadorSalaBd.adicionarUsuarioSala(&usuarioSala); err != nil{
+                    fmt.Println("Erro ao adiiconar usuario sala")
+                    c.AbortWithStatus(500)
+                    return
+                }
+            }
+        }
+        if !usuarioSala.Ativo {
+            if err := gerenciadorSalaBd.ativarUsuarioSala(usuarioSala.Id); err != nil {
+                fmt.Println("Erro ao ativar usuarioSala")
+                fmt.Println(err)
                 c.AbortWithStatus(500)
                 return
-            } else {
-                fmt.Println("Já existe registro do usuario na sala no banco")
             }
         }
         sala.adicionarCliente(usuarioBd.Apelido)
-        infoEntrouEmSala := newInfoSSE("entrou-chat", newConteudo(c.Param("apelidousuario") + "entrou em uma sala", c.Param("apelidousuario"), c.Param("nomesala")))
+        infoEntrouEmSala := newInfoSSE("entrou-chat", newConteudo(c.Param("apelidousuario") + "entrou em uma sala", usuarioBd.Apelido, sala.NomeSala))
         for _, clienteid := range sala.ClientesSala {
             canalSSE, existe := gerenciadorCanaisSSE.canais[clienteid]
             if existe {
@@ -432,7 +473,7 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.POST("/chat/sse/:apelidousuario/sala/:nomesala/enviar", func(c *gin.Context) {
-        clienteSSE, existe := gerenciadorCanaisSSE.canais[c.Param("apelidousuario")]
+        _, existe := gerenciadorCanaisSSE.canais[c.Param("apelidousuario")]
         if !existe {
             c.JSON(400, gin.H{
                 "status":"falha",
@@ -450,6 +491,15 @@ func HandlerSSE(router *gin.Engine) {
             c.AbortWithStatus(500)
             return
         }
+        fmt.Println(salaBd)
+        if !salaBd.Ativo {
+            fmt.Println("SalA nao esta ativa")
+            c.JSON(400, gin.H{
+                "status":"falha",
+                "mensagem":"nao é permitido enviar mensagens a salas nao ativas",
+            })
+            return
+        }
         var usuarioBd UsuarioBD
         if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuarioBd); err != nil {
              if err == sql.ErrNoRows {
@@ -459,10 +509,32 @@ func HandlerSSE(router *gin.Engine) {
             c.AbortWithStatus(500)
             return
         }
+        var usuarioSala UsuarioSalaBD
+        if err := gerenciadorDb.buscarUsuarioSala(salaBd.Id, usuarioBd.Id, &usuarioSala); err != nil {
+            if err == sql.ErrNoRows {
+                c.JSON(400, gin.H{
+                    "status":"falha",
+                    "mensagem": "usuario não é da sala",
+                })
+                return
+            }
+            fmt.Println("Erro ao buscar usuariosala")
+            c.AbortWithStatus(500)
+            return
+        }
+        if !usuarioSala.Ativo {
+            c.JSON(400, gin.H{
+                "status":"falha",
+                "mensagem": "usuario não é membro ativo da sala",
+            })
+            return
+        }
         sala, existe := gerenciadorSalasSSE.Salas[salaBd.Nome]
         if !existe {
             sala = gerenciadorSalasSSE.criarSala(salaBd.Nome)
-            sala.adicionarCliente(clienteSSE.UsuarioBd.Apelido)
+        }
+        if !sala.estaEmSala(usuarioBd.Apelido) {
+            sala.adicionarCliente(usuarioBd.Apelido)
         }
         if len(c.Query("msg")) < 1 {
             c.JSON(400, gin.H{
@@ -483,14 +555,16 @@ func HandlerSSE(router *gin.Engine) {
     })
     router.GET("/sse/:apelidousuario", func(c *gin.Context) {
         //buscar usuario em banco
-        _, existe := gerenciadorCanaisSSE.buscarCanal(c.Param("apelidousuario"))
+        canal, existe := gerenciadorCanaisSSE.buscarCanal(c.Param("apelidousuario"))
         if existe {
+            info := newInfoSSE("shutdown-sse", newConteudo("Printar aviso para utilizar chat em apenas uma aba", c.Param("apelidousuario"),""))
+            canal.Canal <- info
+            gerenciadorCanaisSSE.removerCanal(c.Param("apelidousuario"))
             // limite de um chat aberto por usuario
-            c.JSON(400, gin.H{
+            /*c.JSON(400, gin.H{
                 "status":"falha",
                 "mensagem":"usuario já possui sse aberto",
-            })
-            return
+            })*/
         }
         //busacar usuario banco
         banco := database.ConnectionConstructor()
@@ -517,6 +591,7 @@ func HandlerSSE(router *gin.Engine) {
         c.Writer.Header().Set("Connection", "keep-alive")
         go func() {
             <-c.Request.Context().Done()
+            fmt.Println("Fechando canal de ",usuarioBd.Apelido)
             gerenciadorCanaisSSE.removerCanal(usuarioBd.Apelido)
         }()
         c.Stream(func(w io.Writer) bool {
@@ -617,35 +692,87 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.GET("/chat/usuario/:apelidousuario/sala/:nomesala/sair", func(c *gin.Context) {
-        canal, existe := gerenciadorCanaisSSE.buscarCanal(c.Param("apelidousuario"))
-        if !existe {
-            fmt.Println("nao achou canal")
+        gerenciadorDb := newGerenciadorSalaBd()
+        defer gerenciadorDb.banco.Conn.Close()
+        var usuarioBd UsuarioBD
+        if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuarioBd); err != nil {
+            fmt.Println("Usuario nao encontrado")
             c.AbortWithStatus(404)
             return
         }
-        infoDeixouSala := newInfoSSE("deixou-sala", newConteudo("", c.Param("apelidousuario"), c.Param("nomesala")))
-        sala, existe := gerenciadorSalasSSE.buscarSala(c.Param("nomesala"))
-        if !existe {
+        var salaBd SalaBD
+        if err := gerenciadorDb.buscarSala(c.Param("nomesala"), &salaBd); err != nil {
+            fmt.Println("Sala nao encontrado")
+            c.AbortWithStatus(404)
+            return
+        }
+        canal, canalExiste := gerenciadorCanaisSSE.buscarCanal(usuarioBd.Apelido)
+        if !canalExiste {
+            fmt.Println("nao achou canal")
+            c.JSON(404, gin.H{
+                "status":"falha",
+                "message":"canal nao encontrado",
+            })
+            return
+        }
+        infoDeixouSala := newInfoSSE("deixou-sala", newConteudo("", usuarioBd.Apelido, salaBd.Nome))
+        sala, existe := gerenciadorSalasSSE.buscarSala(salaBd.Nome)
+        if !existe && canalExiste {
             canal.Canal <- infoDeixouSala
             fmt.Println("nao achou sala")
-            c.AbortWithStatus(200)
+        }
+        var usuarioSala UsuarioSalaBD
+        if err := gerenciadorDb.buscarUsuarioSala(salaBd.Id, usuarioBd.Id, &usuarioSala); err != nil {
+            if err == sql.ErrNoRows {
+                fmt.Println(err)
+                fmt.Println("Usuario nao esta na sala")
+                c.JSON(400,gin.H{
+                    "status":"falha",
+                    "mensagem":"usuariosala nao encontrado no banco",
+                })
+                return
+            }
+            fmt.Println(err, "Erro ao buscar usuario sala")
+            c.AbortWithStatus(500)
             return
         }
-        if !sala.estaEmSala(canal.UsuarioBd.Apelido) {
-            fmt.Println("Usuario nao esta na sala")
+        if usuarioSala.Ativo {
+            if err := gerenciadorDb.removerUsuarioSala(&salaBd, &usuarioBd); err != nil {
+                fmt.Println("Erro ao desativar usuario na sala")
+                c.AbortWithStatus(500)
+                return
+            }
+        }
+        usuarios, err := gerenciadorDb.buscarUsuariosDeSala(salaBd.Id);
+        if err != nil {
+            fmt.Println("Erro ao buscar usuario de sala")
+            c.AbortWithStatus(500)
+            return
+        }
+        if len(usuarios) == 0 {
+            if err := gerenciadorDb.removerSala(&salaBd); err != nil {
+                fmt.Println("Erro ao desativar sala")
+                c.AbortWithStatus(500)
+                return
+            }
+        }
+        if canalExiste {
+            if !sala.estaEmSala(canal.UsuarioBd.Apelido) {
+                fmt.Println("Usuario nao esta na sala em cache")
+                canal.Canal <- infoDeixouSala
+                c.AbortWithStatus(200)
+                return
+            }
+            sala.removerCliente(canal.UsuarioBd.Apelido)
             canal.Canal <- infoDeixouSala
-            c.AbortWithStatus(404)
-            return
-        }
-        sala.removerCliente(canal.UsuarioBd.Apelido)
-        canal.Canal <- infoDeixouSala
-        if len(sala.ClientesSala) == 0 {
-            gerenciadorSalasSSE.removerSala(sala.NomeSala)
-        } else {
-            for _, nomecliente := range sala.ClientesSala {
-                canalCliente, existe := gerenciadorCanaisSSE.buscarCanal(nomecliente)
-                if existe {
-                    canalCliente.Canal <- infoDeixouSala
+            if len(sala.ClientesSala) == 0 {
+                gerenciadorSalasSSE.removerSala(sala.NomeSala)
+            } else {
+                for _, nomecliente := range sala.ClientesSala {
+                    canalCliente, existe := gerenciadorCanaisSSE.buscarCanal(nomecliente)
+                    if existe {
+                        canalCliente.Canal <- infoDeixouSala
+                    }
                 }
             }
         }
