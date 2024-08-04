@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -43,13 +44,20 @@ func ConnectionConstructor() *Db {
 	return &database
 }
 
+func (db *Db) ErroDeRegistroDuplicado(err error) bool {
+    if err != nil && strings.Contains(err.Error(), "Duplicate entry") {
+        return true
+    }
+    return false
+}
+
 func (db *Db) QueryRowAndLog(query string, args ...any) *sql.Row {
 	utils.Logger(DB_LOG_FILE, query, "DB LOG", true)
 	var result *sql.Row
 	if len(args) > 0 {
-		result = db.Conn.QueryRow(query, args)	
+		result = db.Conn.QueryRow(query, args)
 	} else {
-		result = db.Conn.QueryRow(query)	
+		result = db.Conn.QueryRow(query)
 	}
 	if result.Err() != nil {
 		utils.Logger(DB_LOG_FILE, result.Err().Error(), "DB LOG[EROOR]", true)
@@ -62,9 +70,9 @@ func (db *Db) QueryAndLog(query string, args ...any) (*sql.Rows, error) {
 	var rows *sql.Rows
 	var err error
 	if len(args) > 0 {
-		rows, err = db.Conn.Query(query, args)	
+		rows, err = db.Conn.Query(query, args)
 	} else {
-		rows, err = db.Conn.Query(query)	
+		rows, err = db.Conn.Query(query)
 	}
 	if err != nil {
 		utils.Logger(DB_LOG_FILE, err.Error(), "DB LOG[EROOR]", true)
@@ -77,9 +85,9 @@ func (db *Db) ExecAndLog(query string, args ...any) (sql.Result, error) {
 	var result sql.Result
 	var err error
 	if len(args) > 0 {
-		result, err = db.Conn.Exec(query, args)	
+		result, err = db.Conn.Exec(query, args)
 	} else {
-		result, err = db.Conn.Exec(query)	
+		result, err = db.Conn.Exec(query)
 	}
 	if err != nil {
 		utils.Logger(DB_LOG_FILE, err.Error(), "DB LOG[EROOR]", true)
@@ -97,7 +105,7 @@ func Exists(table string, id int) (bool, error) {
 	row := conn.QueryRowAndLog(fmt.Sprintf("SELECT id FROM %s WHERE id = %d LIMIT 1", table, id))
 	defer conn.Conn.Close()
 	if err := row.Err(); err != nil {
-		return false, err	
+		return false, err
 	}
 	if err := row.Scan(&dummy.Id); err != nil {
 		if err == sql.ErrNoRows {
