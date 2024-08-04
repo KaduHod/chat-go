@@ -429,7 +429,7 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.POST("/chat/sse/:apelidousuario/sala/:nomesala/enviar", func(c *gin.Context) {
-        _, existe := gerenciadorCanaisSSE.canais[c.Param("apelidousuario")]
+        clienteSSE, existe := gerenciadorCanaisSSE.canais[c.Param("apelidousuario")]
         if !existe {
             c.JSON(400, gin.H{
                 "status":"falha",
@@ -437,10 +437,29 @@ func HandlerSSE(router *gin.Engine) {
             })
             return
         }
-        sala, existe := gerenciadorSalasSSE.Salas[c.Param("nomesala")]
-        if !existe {
-            c.AbortWithStatus(404)
+        var salaBd SalaBD
+        gerenciadorDb := newGerenciadorSalaBd()
+        if err := gerenciadorDb.buscarSala(c.Param("nomesala"), &salaBd); err != nil {
+            if err == sql.ErrNoRows {
+                c.AbortWithStatus(404)
+                return
+            }
+            c.AbortWithStatus(500)
             return
+        }
+        var usuarioBd UsuarioBD
+        if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuarioBd); err != nil {
+             if err == sql.ErrNoRows {
+                c.AbortWithStatus(404)
+                return
+            }
+            c.AbortWithStatus(500)
+            return
+        }
+        sala, existe := gerenciadorSalasSSE.Salas[salaBd.Nome]
+        if !existe {
+            sala = gerenciadorSalasSSE.criarSala(salaBd.Nome)
+            sala.adicionarCliente(clienteSSE.UsuarioBd.Apelido)
         }
         if len(c.Query("msg")) < 1 {
             c.JSON(400, gin.H{
@@ -448,7 +467,7 @@ func HandlerSSE(router *gin.Engine) {
                 "mensagem":"Conteudo de mensagem deve conter um valor!",
             })
         }
-        infoMensagemEnviadaCanal := newInfoSSE("chat-nova-mensagem", newConteudo(c.Query("msg"), c.Param("apelidousuario"), c.Param("nomesala")))
+        infoMensagemEnviadaCanal := newInfoSSE("chat-nova-mensagem", newConteudo(c.Query("msg"), usuarioBd.Apelido, salaBd.Nome))
         for _, clienteid := range sala.ClientesSala {
             canalSSECliente, existe := gerenciadorCanaisSSE.canais[clienteid]
             if !existe {

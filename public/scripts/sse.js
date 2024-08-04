@@ -178,7 +178,7 @@ class Sala {
         elementoSairSala.classList.add("flex", "w-1/4", "justify-center", "items-center")
         const iconeSair = document.createElement("img")
         iconeSair.setAttribute("src", "/public/sair.svg")
-        iconeSair.classList.add("cursor-pointer")
+        iconeSair.classList.add("cursor-pointer", "w-[15px]")
         iconeSair.setAttribute("id", `sala__sair__${this.nome}`)
         iconeSair.dataset.nomesala = this.nome
         iconeSair.addEventListener("click", this.sair.bind(this))
