@@ -12,7 +12,7 @@
     border-radius:50%;
 }
     </style>
-    <body class="flex flex-col items-center">
+    <body class="h-screen flex flex-col items-center">
         <input type="hidden" id="apelidousuario" value="{{ .apelidousuario }}">
         <div id="chat-maincontainer" class="flex-col items-center flex w-screen h-screen">
             <div id="menu-hamburguer" class="redondo flex flex-col justify-around items-center p-2 border-2 border-red-600 w-[40px] max-w-[40px] h-[40px] cursor-pointer">
@@ -26,7 +26,7 @@
                     <button class="w-1/4 borda h-[60%] bg-gray-500 text-white rounded-md" id="entrar-sala-botao" type="submit">Entrar</button>
                 </div>
             </div>
-            <div id="chat-salaaberta" class="w-full flex-1 border-2 flex flex-col p-1">
+            <div id="chat-salaaberta" class="overflow-y-auto w-full h-full border-2 flex flex-col p-1">
                 <div id="titulo-janela-chat-aberta" class="flex-shrink-0 h-fit p-1 border-b border-gray-300">Entre ou selecione uma sala para visualizar as mensagens!</div>
                 <div id="chat-aberto-mensagens" class="overflow-y-auto flex-1 flex flex-col">
                 </div>

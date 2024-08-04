@@ -566,12 +566,20 @@ video {
   position: fixed;
 }
 
+.relative {
+  position: relative;
+}
+
 .bottom-0 {
   bottom: 0px;
 }
 
 .left-0 {
   left: 0px;
+}
+
+.top-4 {
+  top: 1rem;
 }
 
 .mx-1 {

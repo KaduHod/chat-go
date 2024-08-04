@@ -55,7 +55,6 @@ class Utils {
         mensagens.forEach(msg => containerMensagens.appendChild(msg.montaElemento()))
         botaoEnviarMensagem.addEventListener("click", Mensagem.enviarMensagem);
         document.getElementById('menu-hamburguer').click()
-        console.log("AQuiii")
     }
     static removerMensagensChat() {
         const containerMensagens = document.getElementById("chat-aberto-mensagens")
