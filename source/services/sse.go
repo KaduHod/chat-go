@@ -301,6 +301,13 @@ func (s *Sala) removerCliente(nomecliente string) {
     }
     s.ClientesSala = novaLista
 }
+func (s *Sala) transmitir(info *InfoSSE, gerenciadorCanais *GerenciadorCanaisSSE) {
+    for _, cliente := range s.ClientesSala {
+        if canal, existe := gerenciadorCanais.canais[cliente]; existe {
+            canal.Canal <- info
+        }
+    }
+}
 type GerenciadorSalas struct {
     Salas map[string]*Sala `json:"salas"`
 }
@@ -460,12 +467,7 @@ func HandlerSSE(router *gin.Engine) {
         }
         sala.adicionarCliente(usuarioBd.Apelido)
         infoEntrouEmSala := newInfoSSE("entrou-chat", newConteudo(c.Param("apelidousuario") + "entrou em uma sala", usuarioBd.Apelido, sala.NomeSala))
-        for _, clienteid := range sala.ClientesSala {
-            canalSSE, existe := gerenciadorCanaisSSE.canais[clienteid]
-            if existe {
-                canalSSE.Canal <- infoEntrouEmSala
-            }
-        }
+        go sala.transmitir(infoEntrouEmSala, &gerenciadorCanaisSSE)
         c.JSON(200, gin.H{
             "status":"sucesso",
             "mensagem": "sala criado e adentrada :)",
@@ -543,13 +545,7 @@ func HandlerSSE(router *gin.Engine) {
             })
         }
         infoMensagemEnviadaCanal := newInfoSSE("chat-nova-mensagem", newConteudo(c.Query("msg"), usuarioBd.Apelido, salaBd.Nome))
-        for _, clienteid := range sala.ClientesSala {
-            canalSSECliente, existe := gerenciadorCanaisSSE.canais[clienteid]
-            if !existe {
-                continue
-            }
-            canalSSECliente.Canal <- infoMensagemEnviadaCanal
-        }
+        go sala.transmitir(infoMensagemEnviadaCanal, &gerenciadorCanaisSSE)
         c.AbortWithStatus(201)
         return
     })
