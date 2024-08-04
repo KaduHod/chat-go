@@ -1,4 +1,4 @@
-const iduser = document.getElementById("nomeusuario").value;
+const iduser = document.getElementById("apelidousuario").value;
 const salaMenuLateralContainer = document.getElementById("chat-salas")
 const chatMensagensContainer = document.getElementById("chat-aberto-mensagens")
 const botaoEnviarMensagem = document.getElementById("enviar-msg-botao")
@@ -78,7 +78,7 @@ class Usuario {
         return this.nome === Usuario.getNomeUsuarioLogado()
     }
     static getNomeUsuarioLogado() {
-        return document.getElementById("nomeusuario").value;
+        return document.getElementById("apelidousuario").value;
     }
     static busca(nome) {
         return listaUsuarios.find(u => u.nome == nome)
@@ -272,7 +272,32 @@ class SalaUsuarioMensagem {
         return listaSalasUsuariosMensagens.filter(sum => sum.idsala === idsala)
     }
 }
-try {
+
+const main = async () => {
+    const respostaSalasUsuario = await fetch(`/chat/${iduser}/salas`)
+    if (respostaSalasUsuario.status != 200) {
+        throw new Error("Naõ foi possivel buscar as salas do usuario!")
+    }
+    const usuarioLogado = new Usuario(iduser)
+    listaUsuarios.push(usuarioLogado)
+    const dado = await respostaSalasUsuario.json()
+    console.log(dado)
+    const salas = [...dado.salas]
+    salas.forEach(sala => {
+        const room = new Sala(sala.nome)
+        listaSalas.push(room)
+        const salaUsuarioLogado = new SalaUsuario(usuarioLogado.id, room.id)
+        listaSalasUsuarios.push(salaUsuarioLogado)
+        sala.usuarios.forEach(apelido => {
+            if(apelido != usuarioLogado.nome) {
+                const user = new Usuario(apelido)
+                listaUsuarios.push(user)
+                const salaUser = new SalaUsuario(user.id, room.id)
+                listaSalasUsuarios.push(salaUser)
+            }
+        })
+        Sala.adicionaSalaAMenuLateral(room)
+    })
     const eventoSSE = new EventSource(`/sse/${iduser}`);
     eventoSSE.onerror = function(event) {
         console.error("Erro no SSE: ", event);
@@ -351,7 +376,7 @@ try {
         Sala.removerSalaDaLista(room)
         if(room.nome == SALA_SELECIONADA) {
             SALA_SELECIONADA = false
-            botaoEnviarMensagem.removeEventListener("click");
+            botaoEnviarMensagem.removeEventListener("click", Mensagem.enviarMensagem);
         }
         return
     })
@@ -359,6 +384,10 @@ try {
         let {sala, remetente, mensagem} = JSON.parse(e.data).conteudo
         return
     })
+}
+try {
+    main()
 } catch (error) {
     console.log(error)
 }
+
