@@ -2,7 +2,7 @@ const BASE_URL = "http://localhost:3000"
 const NOME_SALA_TESTE = "salateste"
 
 const usuarios = [
-    "kadu",
+    //"kadu",
     "nathy",
     "Beto",
     "walter",
@@ -11,7 +11,7 @@ const usuarios = [
     "usuario3",
     "usuario4",
     "usuario5",
-    "usu6",
+    /*"usu6",
     "usu7",
     "usu8",
     "usu9",
@@ -201,7 +201,7 @@ const usuarios = [
     "usu193",
     "usu194",
     "usu195",
-    "usu196"
+    "usu196"*/
 ];
 const criarClientes = async () => {
     // TENHO QUE ESPERAR POIS O GOLANG RECLMA DE concurrent map writes
@@ -231,7 +231,7 @@ const enivarMensagem = (apelido, nomesala, msg, id) => {
     })
 }
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const testarEnvioDeMensagens = (limite = 100) => {
+const testarEnvioDeMensagens = (limite = 10) => {
     let cont = 0
     while(cont <= limite) {
         console.log("\n")
@@ -247,10 +247,10 @@ const main = async () => {
     await criarClientes()
     await delay(3000)
     console.log("\n")
-//    await entrarEmSalaDeTeste()
+    await entrarEmSalaDeTeste()
  //   await delay(3000)
     console.log("\n")
-    //testarEnvioDeMensagens(200)
+    testarEnvioDeMensagens(1000)
     console.log("Teste passou")
 }
 main()

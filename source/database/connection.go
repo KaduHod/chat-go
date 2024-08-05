@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -42,7 +41,7 @@ func ConnectionConstructor() *Db {
 	}
 	var database Db
 	database.Conn = db
-    database.Conn.SetConnMaxLifetime(time.Minute)
+    database.Conn.SetMaxOpenConns(100)
 	return &database
 }
 func (db *Db) FecharConexao() {

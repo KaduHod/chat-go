@@ -358,11 +358,10 @@ func HandlerSSE(router *gin.Engine) {
     gerenciadorSalasSSE := GerenciadorSalas{
         Salas: make(map[string]*Sala),
     }
+    gerenciadorDb :=  newGerenciadorSalaBd()
     router.GET("/chat/:apelidousuario/salas", func(c *gin.Context) {
-        gerencidorDb := newGerenciadorSalaBd()
-        defer gerencidorDb.banco.Conn.Close()
         var usuario UsuarioBD
-        if err := gerencidorDb.buscarUsuario(c.Param("apelidousuario"), &usuario); err != nil {
+        if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuario); err != nil {
             if err == sql.ErrNoRows {
                 c.AbortWithStatus(404)
                 return
@@ -370,7 +369,7 @@ func HandlerSSE(router *gin.Engine) {
             c.AbortWithStatus(500)
             return
         }
-        salas, err := gerencidorDb.buscarSalasDeUsuario(usuario.Id)
+        salas, err := gerenciadorDb.buscarSalasDeUsuario(usuario.Id)
         var respostaSalasApi []SalaComUsuariosApi
         if err != nil {
             if err == sql.ErrNoRows {
@@ -384,7 +383,7 @@ func HandlerSSE(router *gin.Engine) {
             return
         }
         for _, sala := range salas {
-            apelidos, err := gerencidorDb.buscarUsuariosDeSala(sala.Id)
+            apelidos, err := gerenciadorDb.buscarUsuariosDeSala(sala.Id)
             if err != nil {
                 c.AbortWithStatus(500)
                 return
@@ -401,10 +400,8 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.GET("/chat/sse/:apelidousuario/entrar/:nomesala", func(c *gin.Context) {
-        gerenciadorSalaBd := newGerenciadorSalaBd()
-        defer gerenciadorSalaBd.banco.Conn.Close()
         usuarioBd := UsuarioBD{}
-        if err := gerenciadorSalaBd.buscarUsuario(c.Param("apelidousuario"), &usuarioBd); err != nil {
+        if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuarioBd); err != nil {
             c.JSON(404, gin.H{
                 "status":"falha",
                 "mensagem": "Usuario nao encontrado",
@@ -426,10 +423,10 @@ func HandlerSSE(router *gin.Engine) {
             sala = gerenciadorSalasSSE.criarSala(c.Param("nomesala"))
         }
         salabd := SalaBD {}
-        if  err := gerenciadorSalaBd.buscarSala(c.Param("nomesala"), &salabd); err != nil {
+        if  err := gerenciadorDb.buscarSala(c.Param("nomesala"), &salabd); err != nil {
             if err == sql.ErrNoRows {
                 salabd.Nome = c.Param("nomesala")
-                if err = gerenciadorSalaBd.criarSala(&salabd); err != nil {
+                if err = gerenciadorDb.criarSala(&salabd); err != nil {
                     gerenciadorSalasSSE.removerSala(sala.NomeSala)
                     fmt.Println("Erro ao criar sala")
                     c.AbortWithStatus(500)
@@ -443,7 +440,7 @@ func HandlerSSE(router *gin.Engine) {
             }
         }
         if !salabd.Ativo {
-            if err := gerenciadorSalaBd.ativarSala(salabd.Id); err != nil {
+            if err := gerenciadorDb.ativarSala(salabd.Id); err != nil {
                 fmt.Println("Erro ao ativar sala")
                 c.AbortWithStatus(500)
                 return
@@ -457,10 +454,10 @@ func HandlerSSE(router *gin.Engine) {
             IdSala: salabd.Id,
             IdUsuario: usuarioBd.Id,
         }
-        err := gerenciadorSalaBd.buscarUsuarioSala(usuarioSala.IdSala, usuarioSala.IdUsuario, &usuarioSala)
+        err := gerenciadorDb.buscarUsuarioSala(usuarioSala.IdSala, usuarioSala.IdUsuario, &usuarioSala)
         if err == sql.ErrNoRows {
             if err == sql.ErrNoRows {
-                if err := gerenciadorSalaBd.adicionarUsuarioSala(&usuarioSala); err != nil{
+                if err := gerenciadorDb.adicionarUsuarioSala(&usuarioSala); err != nil{
                     fmt.Println("Erro ao adiiconar usuario sala")
                     c.AbortWithStatus(500)
                     return
@@ -468,7 +465,7 @@ func HandlerSSE(router *gin.Engine) {
             }
         }
         if !usuarioSala.Ativo {
-            if err := gerenciadorSalaBd.ativarUsuarioSala(usuarioSala.Id); err != nil {
+            if err := gerenciadorDb.ativarUsuarioSala(usuarioSala.Id); err != nil {
                 fmt.Println("Erro ao ativar usuarioSala")
                 fmt.Println(err)
                 c.AbortWithStatus(500)
@@ -495,7 +492,6 @@ func HandlerSSE(router *gin.Engine) {
             return
         }
         var salaBd SalaBD
-        gerenciadorDb := newGerenciadorSalaBd()
         if err := gerenciadorDb.buscarSala(c.Param("nomesala"), &salaBd); err != nil {
             if err == sql.ErrNoRows {
                 fmt.Println("Servidor nao encontrou a sala")
@@ -624,9 +620,8 @@ func HandlerSSE(router *gin.Engine) {
             c.AbortWithStatus(404)
             return
         }
-        gerenciadorBd := newGerenciadorSalaBd()
         var usuarioBd UsuarioBD
-        if err := gerenciadorBd.buscarUsuario(loginInput.Apelido, &usuarioBd); err != nil {
+        if err := gerenciadorDb.buscarUsuario(loginInput.Apelido, &usuarioBd); err != nil {
             if err == sql.ErrNoRows {
                 c.AbortWithStatus(404)
                 return
@@ -648,7 +643,6 @@ func HandlerSSE(router *gin.Engine) {
             return
         }
         gerenciadorDb := newGerenciadorSalaBd()
-        //defer gerenciadorDb.banco.Conn.Close()
         if err := gerenciadorDb.adicionarUsuario(&usuarioNovo); err != nil {
             fmt.Println(err)
             fmt.Println("Erro ao adicionar usuario", usuarioNovo)
@@ -664,8 +658,6 @@ func HandlerSSE(router *gin.Engine) {
             c.AbortWithStatus(500)
             return
         }
-        gerenciadorDb := newGerenciadorSalaBd()
-        defer gerenciadorDb.banco.Conn.Close()
         if err := gerenciadorDb.adicionarUsuario(&usuarioNovo); err != nil {
             fmt.Println(err)
             fmt.Println("Erro ao adicionar usuario", usuarioNovo)
@@ -676,9 +668,8 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.GET("/chat/:apelidousuario/view", func(c *gin.Context) {
-        gerenciadorBd := newGerenciadorSalaBd()
         var usuario UsuarioBD
-        if err := gerenciadorBd.buscarUsuario(c.Param("apelidousuario"), &usuario); err != nil {
+        if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuario); err != nil {
             //quero direcionar para a rota de cadastro
             c.Redirect(302 , "/chat/usuario/cadastrar")
             return
@@ -702,8 +693,6 @@ func HandlerSSE(router *gin.Engine) {
         return
     })
     router.GET("/chat/usuario/:apelidousuario/sala/:nomesala/sair", func(c *gin.Context) {
-        gerenciadorDb := newGerenciadorSalaBd()
-        defer gerenciadorDb.banco.Conn.Close()
         var usuarioBd UsuarioBD
         if err := gerenciadorDb.buscarUsuario(c.Param("apelidousuario"), &usuarioBd); err != nil {
             fmt.Println("Usuario nao encontrado")
