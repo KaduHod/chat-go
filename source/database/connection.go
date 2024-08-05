@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -41,7 +42,15 @@ func ConnectionConstructor() *Db {
 	}
 	var database Db
 	database.Conn = db
+    database.Conn.SetConnMaxLifetime(time.Minute)
 	return &database
+}
+func (db *Db) FecharConexao() {
+    if err := db.Conn.Close(); err != nil {
+        fmt.Println("Erro ao fechar conexao")
+        fmt.Println(err)
+        panic(err)
+    }
 }
 
 func (db *Db) ErroDeRegistroDuplicado(err error) bool {

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -74,7 +75,8 @@ func (c *CanalSSE) ping() {
     }
 }
 type GerenciadorCanaisSSE struct {
-    canais map[string]*CanalSSE
+    canais sync.Map
+    //canais map[string]*CanalSSE
 }
 func (g *GerenciadorCanaisSSE) log(msg string) {
     dataAgora := utils.AgoraFormatado()
@@ -84,27 +86,31 @@ func (g *GerenciadorCanaisSSE) log(msg string) {
 * Criando um canal de usuario
 */
 func (g *GerenciadorCanaisSSE) criarCanal(usuarioBd UsuarioBD) (*CanalSSE, bool) {
-    if _, ok := g.canais[usuarioBd.Apelido]; !ok {
+    if canal, existe := g.buscarCanal(usuarioBd.Apelido); existe {
+        return canal, true
+    } else {
         canal := CanalSSE{
             UsuarioBd: usuarioBd,
             Canal: make(chan *InfoSSE),
         }
-        g.canais[usuarioBd.Apelido] = &canal
-        return g.canais[usuarioBd.Apelido], true
+        g.canais.Store(usuarioBd.Apelido, &canal)
+        return &canal, true
     }
-    return g.canais[usuarioBd.Apelido], false
 }
 // Buscando um usuario
 func (g *GerenciadorCanaisSSE) buscarCanal(nomeCliente string) (*CanalSSE, bool) {
-    if canal, existe := g.canais[nomeCliente]; !existe {
-        return canal, false
+    if canal, existe := g.canais.Load(nomeCliente); existe {
+        return canal.(*CanalSSE), true
     }
-    return g.canais[nomeCliente], true
+    return nil, false
 }
 //removendo um usuario
 func (g *GerenciadorCanaisSSE) removerCanal(id string) error {
-    close(g.canais[id].Canal)
-    delete(g.canais, id)
+    if canal, existe := g.buscarCanal(id); existe {
+        close(canal.Canal)
+        g.canais.Delete(id)
+        return nil
+    }
     return nil
 }
 type SalaBD struct {
@@ -233,6 +239,7 @@ func (sdb *GerenciadorSalaBd) buscarSalasDeUsuario(idUsuario int64) ([]SalaBD ,e
     var salas []SalaBD
     query := fmt.Sprintf("SELECT s.id, s.nome FROM sala s INNER JOIN usuariosala us on us.idsala = s.id WHERE us.idusuario = %d", idUsuario)
     linhas, err := sdb.banco.QueryAndLog(query)
+    defer linhas.Close()
     if err != nil {
         if err == sql.ErrNoRows {
             return salas, nil
@@ -252,6 +259,7 @@ func (sdb *GerenciadorSalaBd) buscarUsuariosDeSala(idSala int64) ([]string ,erro
     var apelidos []string
     query := fmt.Sprintf("SELECT u.apelido FROM usuario u INNER JOIN usuariosala us on us.idusuario = u.id INNER JOIN sala s on s.id = us.idsala WHERE s.id = %d AND us.ativo = 1", idSala)
     linhas, err := sdb.banco.QueryAndLog(query)
+    defer linhas.Close()
     if err != nil {
         if err == sql.ErrNoRows {
             return apelidos, nil
@@ -304,12 +312,13 @@ func (s *Sala) removerCliente(nomecliente string) {
 }
 func (s *Sala) transmitir(info *InfoSSE, gerenciadorCanais *GerenciadorCanaisSSE) {
     for _, cliente := range s.ClientesSala {
-        if canal, existe := gerenciadorCanais.canais[cliente]; existe {
+        if canal, existe := gerenciadorCanais.buscarCanal(cliente); existe {
             canal.Canal <- info
         }
     }
 }
 type GerenciadorSalas struct {
+   // Salas sync.Map `json:"salas"`
     Salas map[string]*Sala `json:"salas"`
 }
 func (gsc *GerenciadorSalas) criarSala(nomeSala string) *Sala {
@@ -345,9 +354,7 @@ type LoginInput struct {
     Apelido string `json:"apelido" form:"apelido" bind:"required"`
 }
 func HandlerSSE(router *gin.Engine) {
-    gerenciadorCanaisSSE := GerenciadorCanaisSSE{
-        canais: make(map[string]*CanalSSE),
-    }
+    gerenciadorCanaisSSE := GerenciadorCanaisSSE{}
     gerenciadorSalasSSE := GerenciadorSalas{
         Salas: make(map[string]*Sala),
     }
@@ -405,7 +412,7 @@ func HandlerSSE(router *gin.Engine) {
             fmt.Println("Usuario nao encontrado")
             return
         }
-        _, existe := gerenciadorCanaisSSE.canais[usuarioBd.Apelido]
+        _, existe := gerenciadorCanaisSSE.buscarCanal(usuarioBd.Apelido)
         if !existe {
             fmt.Println("Cliente não tem conexao de sse aberta")
             c.JSON(400, gin.H{
@@ -479,7 +486,7 @@ func HandlerSSE(router *gin.Engine) {
     })
     router.POST("/chat/sse/:apelidousuario/sala/:nomesala/enviar", func(c *gin.Context) {
         fmt.Println("Usuario pediu pra enviar mensagem", c.Param("apelidousuario"), c.Param("nomesala"))
-        _, existe := gerenciadorCanaisSSE.canais[c.Param("apelidousuario")]
+        _, existe := gerenciadorCanaisSSE.buscarCanal(c.Param("apelidousuario"))
         if !existe {
             c.JSON(400, gin.H{
                 "status":"falha",
@@ -572,7 +579,7 @@ func HandlerSSE(router *gin.Engine) {
         banco := database.ConnectionConstructor()
         query := fmt.Sprintf("SELECT id, nome, apelido FROM usuario WHERE apelido = '%s' LIMIT 1", c.Param("apelidousuario"))
         linha := banco.QueryRowAndLog(query)
-        banco.Conn.Close()
+        banco.FecharConexao()
         var usuarioBd UsuarioBD
         if err := linha.Scan(&usuarioBd.Id, &usuarioBd.Nome, &usuarioBd.Apelido); err != nil {
             if err.Error() == sql.ErrNoRows.Error() {
@@ -598,7 +605,7 @@ func HandlerSSE(router *gin.Engine) {
             gerenciadorCanaisSSE.removerCanal(usuarioBd.Apelido)
         }()
         c.Stream(func(w io.Writer) bool {
-            canal = gerenciadorCanaisSSE.canais[usuarioBd.Apelido]
+            canal, _ = gerenciadorCanaisSSE.criarCanal(usuarioBd)
             if msg, ok := <- canal.Canal; ok {
                 canal.gerenciarEventos(msg, c)
                 return true
@@ -641,7 +648,7 @@ func HandlerSSE(router *gin.Engine) {
             return
         }
         gerenciadorDb := newGerenciadorSalaBd()
-        defer gerenciadorDb.banco.Conn.Close()
+        //defer gerenciadorDb.banco.Conn.Close()
         if err := gerenciadorDb.adicionarUsuario(&usuarioNovo); err != nil {
             fmt.Println(err)
             fmt.Println("Erro ao adicionar usuario", usuarioNovo)
