@@ -632,6 +632,28 @@ func HandlerSSE(router *gin.Engine) {
         c.Redirect(302, fmt.Sprintf("/chat/%s/view", usuarioBd.Apelido))
         return
     })
+    router.POST("/chat/api/usuario/login", func (c *gin.Context) {
+        var loginInput LoginInput
+        if err := c.ShouldBind(&loginInput); err != nil {
+            c.AbortWithStatus(404)
+            return
+        }
+        var usuarioBd UsuarioBD
+        if err := gerenciadorDb.buscarUsuario(loginInput.Apelido, &usuarioBd); err != nil {
+            if err == sql.ErrNoRows {
+                c.AbortWithStatus(404)
+                return
+            }
+            fmt.Println(err)
+            c.AbortWithStatus(500)
+            return
+        }
+        c.JSON(200, gin.H{
+            "status": "sucesso",
+            "usuario": usuarioBd,
+        })
+        return
+    })
     router.GET("/chat/usuario/cadastrar", func(c *gin.Context) {
         c.HTML(200, "cadastrar.tmpl", gin.H{})
         return
@@ -664,7 +686,10 @@ func HandlerSSE(router *gin.Engine) {
             c.AbortWithStatus(500)
             return
         }
-        c.AbortWithStatus(201)
+        c.JSON(201, gin.H{
+            "status": "sucesso",
+            "usuario": usuarioNovo,
+        })
         return
     })
     router.GET("/chat/:apelidousuario/view", func(c *gin.Context) {
