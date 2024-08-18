@@ -575,7 +575,6 @@ func HandlerSSE(router *gin.Engine) {
         banco := database.ConnectionConstructor()
         query := fmt.Sprintf("SELECT id, nome, apelido FROM usuario WHERE apelido = '%s' LIMIT 1", c.Param("apelidousuario"))
         linha := banco.QueryRowAndLog(query)
-        banco.FecharConexao()
         var usuarioBd UsuarioBD
         if err := linha.Scan(&usuarioBd.Id, &usuarioBd.Nome, &usuarioBd.Apelido); err != nil {
             if err.Error() == sql.ErrNoRows.Error() {
